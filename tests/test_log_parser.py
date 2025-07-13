@@ -5,12 +5,12 @@ Unit tests for LogGuard ML
 import os
 import pandas as pd
 import pytest
-from utils.log_parser import LogParser
-from utils.ml_model import AnomalyDetector
+from logguard_ml.core.log_parser import LogParser
+from logguard_ml.core.ml_model import AnomalyDetector
 import yaml
 
 # Path constants for tests
-CONFIG_PATH = os.path.join("config", "config.yaml")
+CONFIG_PATH = os.path.join("logguard_ml", "config", "config.yaml")
 SAMPLE_LOG_PATH = os.path.join("data", "sample_log.log")
 
 @pytest.fixture
@@ -69,7 +69,7 @@ def test_anomaly_detector(config):
 
     # Should contain new columns
     assert "message_length" in df_out.columns
-    assert "severity" in df_out.columns
+    assert "severity_score" in df_out.columns
     assert "is_anomaly" in df_out.columns
 
     # Values should be either 0 or 1 in is_anomaly

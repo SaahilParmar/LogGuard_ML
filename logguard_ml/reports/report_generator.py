@@ -208,7 +208,7 @@ def _create_anomaly_timeline(df: pd.DataFrame) -> Optional[go.Figure]:
         
         # Group by time periods and count anomalies
         df_copy = df_copy.sort_values("timestamp")
-        df_copy["hour"] = df_copy["timestamp"].dt.floor("H")
+        df_copy["hour"] = df_copy["timestamp"].dt.floor("h")
         
         hourly_stats = df_copy.groupby("hour").agg({
             "is_anomaly": ["sum", "count"]
@@ -430,7 +430,7 @@ def _build_html_report(
     <!-- Navigation -->
     <nav class="navbar navbar-dark">
         <div class="container">
-            <span class="navbar-brand mb-0 h1">🛡️ {title}</span>
+            <span class="navbar-brand mb-0 h1">LogGuard {title}</span>
             <span class="navbar-text">Generated: {summary_stats["generated_at"]}</span>
         </div>
     </nav>
@@ -480,7 +480,7 @@ def _build_html_report(
             <div class="col-12">
                 <div class="card stats-card">
                     <div class="card-body">
-                        <h5 class="card-title">📅 Analysis Period</h5>
+                        <h5 class="card-title">Analysis Period</h5>
                         <p class="card-text">{summary_stats["time_range"]}</p>
                     </div>
                 </div>
@@ -489,20 +489,20 @@ def _build_html_report(
 
         <!-- Visualizations -->
         <div class="chart-container">
-            <h3>📊 Analytics Dashboard</h3>
+            <h3>Analytics Dashboard</h3>
             {visualizations}
         </div>
 
         <!-- Anomaly Details -->
         <div class="table-container">
-            <h3>🚨 Detected Anomalies</h3>
+            <h3>Detected Anomalies</h3>
             {anomaly_table}
         </div>
 
         <!-- Raw Data -->
         {f'''
         <div class="table-container">
-            <h3>📋 Raw Data Sample</h3>
+            <h3>Raw Data Sample</h3>
             {raw_data_table}
         </div>
         ''' if raw_data_table else ''}
@@ -512,7 +512,7 @@ def _build_html_report(
     <footer class="footer">
         <div class="container">
             <p>&copy; 2025 LogGuard ML - AI-Powered Log Analysis Framework</p>
-            <p><small>Generated with ❤️ by LogGuard ML v0.1.0</small></p>
+            <p><small>Generated with LogGuard ML v0.1.0</small></p>
         </div>
     </footer>
 
