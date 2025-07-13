@@ -29,13 +29,32 @@ LogGuard ML is a professional-grade framework that combines intelligent log pars
 
 ### Installation
 
+#### For Users
 ```bash
-# Install from source (recommended for now)
+# Clone the repository
 git clone https://github.com/SaahilParmar/LogGuard_ML.git
 cd LogGuard_ML
-pip install -e .
 
-# Or install development version
+# Create and activate virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install the package
+pip install -e .
+```
+
+#### For Developers
+```bash
+# Clone the repository
+git clone https://github.com/SaahilParmar/LogGuard_ML.git
+cd LogGuard_ML
+
+# Run automated setup script
+./scripts/setup-dev.sh
+
+# Or manual setup:
+python -m venv .venv
+source .venv/bin/activate
 pip install -e ".[dev]"
 ```
 

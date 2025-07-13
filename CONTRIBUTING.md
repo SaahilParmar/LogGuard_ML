@@ -1,28 +1,98 @@
 # Contributing to LogGuard ML
 
-We welcome contributions! Here's how you can help:
+We welcome contributions! Here's how you can help make LogGuard ML better.
 
-## Development Setup
+## Quick Start
 
-1. Fork the repository
-2. Create a virtual environment:
+### Automated Setup (Recommended)
+
+1. **Fork and clone the repository**
+   ```bash
+   git clone https://github.com/YourUsername/LogGuard_ML.git
+   cd LogGuard_ML
+   ```
+
+2. **Run the setup script**
+   ```bash
+   ./scripts/setup-dev.sh
+   ```
+
+3. **Verify your environment**
+   ```bash
+   source .venv/bin/activate
+   ./scripts/test-env.sh
+   ```
+
+### Manual Setup
+
+1. **Fork the repository**
+2. **Create a virtual environment:**
    ```bash
    python -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    ```
-3. Install dependencies:
+
+3. **Install the package in editable mode:**
    ```bash
-   pip install -r requirements.txt
+   pip install -e .
    ```
 
-## Running Tests
+4. **Install development dependencies:**
+   ```bash
+   pip install pytest pytest-cov black isort flake8 mypy build twine safety bandit
+   ```
+
+5. **Install pre-commit hooks (optional but recommended):**
+   ```bash
+   pip install pre-commit
+   pre-commit install
+   ```
+
+## Development Workflow
+
+### Running Tests
 
 ```bash
+# Activate virtual environment
+source .venv/bin/activate
+
 # Run all tests
-PYTHONPATH=. pytest
+pytest tests/ -v
 
 # Run with coverage
-PYTHONPATH=. pytest --cov=utils --cov-report=html
+pytest tests/ -v --cov=logguard_ml --cov-report=html
+
+# Run specific test file
+pytest tests/test_log_parser.py -v
+```
+
+### Code Quality Checks
+
+```bash
+# Format code
+black logguard_ml tests
+
+# Sort imports
+isort logguard_ml tests
+
+# Lint code
+flake8 logguard_ml tests
+
+# Type checking
+mypy logguard_ml --ignore-missing-imports
+
+# Security scan
+bandit -r logguard_ml/
+```
+
+### Building and Testing Package
+
+```bash
+# Build package
+python -m build
+
+# Test package installation
+twine check dist/*
 ```
 
 ## Code Style
