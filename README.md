@@ -1,5 +1,10 @@
 ✅ All Commands You Can Run
 
+
+RUN ALL TEST - 
+
+PYTHONPATH=. pytest
+
 ✅ 1. Run the Main Pipeline
 
 → Run your log processing pipeline without ML anomaly detection:
