@@ -4,3 +4,7 @@ venv/
 
 # Tests
 tests/
+
+__pycache__/
+*.pyc
+*.pyo
