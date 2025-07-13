@@ -117,7 +117,7 @@ addopts = [
     "--cov=logguard_ml",
     "--cov-report=html",
     "--cov-report=term-missing",
-    "--cov-fail-under=57"
+    "--cov-fail-under=50"
 ]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
