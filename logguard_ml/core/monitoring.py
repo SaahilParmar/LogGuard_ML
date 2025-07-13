@@ -281,7 +281,7 @@ class StreamProcessor:
             if hasattr(self.parser, 'parse_log_lines'):
                 df = self.parser.parse_log_lines(lines)
             else:
-                # Parse lines individually
+                # Parse lines individually  
                 records = []
                 for line_num, line in enumerate(lines):
                     try:
@@ -297,8 +297,11 @@ class StreamProcessor:
                 # Create DataFrame
                 df = pd.DataFrame(records)
             
-            # Detect anomalies 
+            # Detect anomalies - handle both single DataFrame and tuple returns
             result = self.detector.detect_anomalies(df)
+            if isinstance(result, tuple):
+                # If detector returns a tuple, use the first DataFrame
+                result = result[0]
             
             return result
         except Exception as e:

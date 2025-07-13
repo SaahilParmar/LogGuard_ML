@@ -307,3 +307,33 @@ class LogParser:
         fields.update(["line_number", "message", "timestamp", "level"])
         
         return sorted(list(fields))
+
+    def parse_log_lines(self, lines: List[str]) -> pd.DataFrame:
+        """
+        Parse a list of log lines into a structured DataFrame.
+        
+        Args:
+            lines: List of log lines to parse
+            
+        Returns:
+            DataFrame containing parsed log entries
+        """
+        records = []
+        for line_num, line in enumerate(lines):
+            line = line.strip()
+            if not line:  # Skip empty lines
+                continue
+                
+            parsed_record = self._parse_line(line, line_num)
+            if parsed_record:
+                records.append(parsed_record)
+        
+        if records:
+            df = pd.DataFrame(records)
+            df = MemoryProfiler.optimize_dataframe(df)
+            logger.debug(f"Successfully parsed {len(df)} log entries from {len(lines)} lines")
+        else:
+            df = pd.DataFrame(columns=["timestamp", "level", "message", "line_number"])
+            logger.warning("No log entries matched any patterns")
+        
+        return df
