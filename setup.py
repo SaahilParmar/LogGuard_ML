@@ -11,10 +11,16 @@ def read_readme():
     with open("README.md", "r", encoding="utf-8") as fh:
         return fh.read()
 
-# Read requirements from requirements.txt
-def read_requirements():
-    with open("requirements.txt", "r", encoding="utf-8") as fh:
-        return [line.strip() for line in fh if line.strip() and not line.startswith("#")]
+# Read requirements directly defined here
+def get_requirements():
+    return [
+        "pandas>=1.5.0",
+        "numpy>=1.24.0",
+        "scikit-learn>=1.3.0",
+        "plotly>=5.0.0",
+        "pyyaml>=6.0",
+        "jinja2>=3.0.0",
+    ]
 
 # Get version from __version__.py
 def get_version():
@@ -42,7 +48,6 @@ setup(
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
         "Intended Audience :: System Administrators",
-        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.9",
@@ -54,7 +59,7 @@ setup(
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
     python_requires=">=3.9",
-    install_requires=read_requirements(),
+    install_requires=get_requirements(),
     extras_require={
         "dev": [
             "pytest>=7.0",
