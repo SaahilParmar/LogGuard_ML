@@ -366,6 +366,16 @@ def _build_html_report(
 ) -> str:
     """Build the complete HTML report."""
     
+    # Build raw data section conditionally
+    raw_data_section = ""
+    if raw_data_table:
+        raw_data_section = f"""
+        <div class="table-container">
+            <h3>Raw Data Sample</h3>
+            {raw_data_table}
+        </div>
+        """
+    
     return f'''<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -500,12 +510,7 @@ def _build_html_report(
         </div>
 
         <!-- Raw Data -->
-        {f'''
-        <div class="table-container">
-            <h3>Raw Data Sample</h3>
-            {raw_data_table}
-        </div>
-        ''' if raw_data_table else ''}
+        {raw_data_section}
     </div>
 
     <!-- Footer -->
