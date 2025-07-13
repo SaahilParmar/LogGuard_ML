@@ -1,9 +1,24 @@
-✅ All Commands You Can Run
+# LogGuard ML
 
+🛡️ **AI-Powered Log Analysis & Anomaly Detection Framework**
 
-RUN ALL TEST - 
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Tests](https://img.shields.io/badge/tests-passing-green.svg)](./tests/)
 
-PYTHONPATH=. pytest
+LogGuard ML combines regex-based log parsing with machine learning to automatically detect anomalies in application logs and generate beautiful, actionable reports.
+
+## 🚀 Quick Start
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run basic log analysis
+python main.py --logfile data/sample_log.log
+
+# Run with ML anomaly detection
+python main.py --logfile data/sample_log.log --ml
 
 ✅ 1. Run the Main Pipeline
 
