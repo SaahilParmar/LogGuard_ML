@@ -75,14 +75,14 @@ class LogParser:
         Raises:
             LogParsingError: If configuration is invalid or patterns cannot be compiled
         """
+        if not isinstance(config, dict):
+            raise LogParsingError("Configuration must be a dictionary")
+            
         self.config = config
         self.patterns: List[re.Pattern] = []
         self.use_parallel = config.get("use_parallel_parsing", True)
         self.chunk_size = config.get("chunk_size", 10000)
         self.max_workers = config.get("max_workers", min(4, mp.cpu_count()))
-        
-        if not isinstance(config, dict):
-            raise LogParsingError("Configuration must be a dictionary")
             
         self._compile_patterns()
         logger.info(f"LogParser initialized with {len(self.patterns)} patterns")

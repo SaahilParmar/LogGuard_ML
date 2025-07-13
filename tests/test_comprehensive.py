@@ -106,7 +106,9 @@ class TestLogParser:
         
         try:
             df = parser.parse_log_file(temp_path)
-            assert len(df) == 0
+            # Should have 1 unparsed entry
+            assert len(df) == 1
+            assert df["level"].iloc[0] == "UNPARSED"
         finally:
             os.unlink(temp_path)
     
@@ -271,9 +273,17 @@ Another invalid line
             parser = LogParser(config=sample_config)
             df = parser.parse_log_file(temp_path)
             
-            # Should only parse valid lines
-            assert len(df) == 2
-            assert df["level"].tolist() == ["INFO", "ERROR"]
+            # Should have 4 total lines (2 valid + 2 unparsed)
+            assert len(df) == 4
+            
+            # Check valid lines
+            valid_df = df[df["level"] != "UNPARSED"]
+            assert len(valid_df) == 2
+            assert valid_df["level"].tolist() == ["INFO", "ERROR"]
+            
+            # Check unparsed lines
+            unparsed_df = df[df["level"] == "UNPARSED"]
+            assert len(unparsed_df) == 2
             
         finally:
             os.unlink(temp_path)
