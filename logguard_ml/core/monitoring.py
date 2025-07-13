@@ -231,9 +231,18 @@ class StreamProcessor:
             detector: Optional preconfigured anomaly detector
         """
         self.config = config  # Add config attribute for tests
-        self.parser = parser or LogParser(config)
-        self.detector = detector or AdvancedAnomalyDetector(config)
         self.buffer_size = buffer_size
+        
+        # Initialize parser and detector - this allows for mocking
+        if parser is not None:
+            self.parser = parser
+        else:
+            self.parser = LogParser(config)
+            
+        if detector is not None:
+            self.detector = detector
+        else:
+            self.detector = AdvancedAnomalyDetector(config)
         
         # Processing buffers
         self.line_buffer = []
@@ -524,12 +533,18 @@ class LogMonitor:
             
         anomalies = df[df['is_anomaly'] == 1]
         if not anomalies.empty:
-            anomaly_data = {
-                'count': len(anomalies),
-                'timestamp': datetime.now().isoformat(),
-                'sample_messages': anomalies['message'].tolist()[:5]
-            }
-            self.alert_manager.send_alert(anomaly_data)
+            # Call should_alert to check if we should send alert
+            if self.alert_manager.should_alert(len(anomalies)):
+                anomaly_data = {
+                    'count': len(anomalies),
+                    'timestamp': datetime.now().isoformat(),
+                    'sample_messages': anomalies['message'].tolist()[:5]
+                }
+                self.alert_manager.send_alert(anomaly_data)
+                
+    def set_alert_manager(self, alert_manager: AlertManager):
+        """Set the alert manager instance (useful for testing)."""
+        self.alert_manager = alert_manager
     
     def _on_file_modified(self):
         """Handle file modification events."""
