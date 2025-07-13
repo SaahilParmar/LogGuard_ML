@@ -61,8 +61,8 @@ logs/
 # Keep sample log file for tests
 !data/sample_log.log
 
-# Reports (generated artifacts - optional)
-# reports/*.html  # uncomment if you don't want to track generated reports
+# Reports (generated artifacts)
+reports/*.html
 
 # Temporary files
 *.tmp
