@@ -303,10 +303,7 @@ class TestStreamProcessor:
     @patch('logguard_ml.core.monitoring.AdvancedAnomalyDetector')
     def test_process_batch(self, mock_detector, mock_parser):
         """Test processing a batch of log entries."""
-        config = {}
-        processor = StreamProcessor(config)
-        
-        # Mock parser and detector
+        # Mock parser and detector instances
         mock_parser_instance = MagicMock()
         mock_parser_instance.parse_log_lines.return_value = pd.DataFrame({
             'timestamp': ['2024-01-01 12:00:00'],
@@ -321,6 +318,10 @@ class TestStreamProcessor:
             pd.DataFrame({'anomaly_score': [0.1]})
         )
         mock_detector.return_value = mock_detector_instance
+        
+        # Create processor after mocks are set up
+        config = {}
+        processor = StreamProcessor(config)
         
         log_lines = ["2024-01-01 12:00:00 INFO test message"]
         result = processor.process_batch(log_lines)
@@ -459,6 +460,11 @@ class TestLogMonitor:
     @patch('logguard_ml.core.monitoring.AlertManager')
     def test_process_anomalies(self, mock_alert_manager):
         """Test processing anomalies."""
+        # Mock alert manager instance first
+        mock_manager = MagicMock()
+        mock_manager.should_alert.return_value = True
+        mock_alert_manager.return_value = mock_manager
+        
         config = {"alerting": {"enabled": True}}
         
         with tempfile.NamedTemporaryFile(delete=False) as f:
@@ -466,11 +472,6 @@ class TestLogMonitor:
         
         try:
             monitor = LogMonitor(config, temp_path)
-            
-            # Mock alert manager
-            mock_manager = MagicMock()
-            mock_manager.should_alert.return_value = True
-            mock_alert_manager.return_value = mock_manager
             
             # Create test data with anomalies
             df = pd.DataFrame({

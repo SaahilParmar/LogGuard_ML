@@ -287,7 +287,7 @@ class StreamProcessor:
         """Process a batch of log lines and return results."""
         try:
             # Use parse_log_lines if available, otherwise fall back to _parse_line
-            if hasattr(self.parser, 'parse_log_lines'):
+            if hasattr(self.parser, 'parse_log_lines') and callable(getattr(self.parser, 'parse_log_lines')):
                 df = self.parser.parse_log_lines(lines)
             else:
                 # Parse lines individually  
@@ -316,6 +316,14 @@ class StreamProcessor:
         except Exception as e:
             logger.error(f"Error processing batch: {e}")
             return pd.DataFrame()
+    
+    def set_parser(self, parser):
+        """Set the parser instance (useful for testing)."""
+        self.parser = parser
+        
+    def set_detector(self, detector):
+        """Set the detector instance (useful for testing)."""
+        self.detector = detector
         
     def _process_loop(self):
         """Main processing loop."""
