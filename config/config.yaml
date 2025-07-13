@@ -1,0 +1,47 @@
+# --------------------------------------------------------
+# LogGuard ML - Configuration File
+# --------------------------------------------------------
+
+# --------------------------------------------------------
+# Log Patterns
+# Define regex patterns to extract fields from log lines
+# --------------------------------------------------------
+
+log_patterns:
+  - pattern: "(?P<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?P<level>ERROR|WARN|INFO) (?P<message>.+)"
+
+# --------------------------------------------------------
+# ML Model Parameters
+# --------------------------------------------------------
+
+ml_model:
+  algorithm: isolation_forest
+  contamination: 0.05        # Percentage of data to consider anomalous
+  random_state: 42
+  max_samples: auto
+
+# --------------------------------------------------------
+# Report Settings
+# --------------------------------------------------------
+
+report:
+  output_html: reports/anomaly_report.html
+
+# --------------------------------------------------------
+# Thresholds
+# These can be used for simple rule-based alerting
+# --------------------------------------------------------
+
+thresholds:
+  error_count: 10      # Flag logs if ERROR count exceeds this
+  warn_count: 20       # Flag logs if WARN count exceeds this
+
+# --------------------------------------------------------
+# Columns to include in report tables
+# --------------------------------------------------------
+
+report_columns:
+  - timestamp
+  - level
+  - message
+  - is_anomaly
