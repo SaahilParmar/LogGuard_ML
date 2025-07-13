@@ -513,7 +513,11 @@ def main() -> int:
     optimize_pandas_settings()
     
     parser = create_argument_parser()
-    args = parser.parse_args()
+    try:
+        args = parser.parse_args()
+    except KeyboardInterrupt:
+        print("\n⏹️  Operation cancelled by user")
+        return 130
     
     if args.command is None:
         parser.print_help()
@@ -532,7 +536,7 @@ def main() -> int:
             
     except KeyboardInterrupt:
         print("\n⏹️  Operation cancelled by user")
-        return 1
+        return 130
     except Exception as e:
         logger.error(f"Unexpected error: {e}", exc_info=True)
         print(f"💥 Unexpected error: {e}")
