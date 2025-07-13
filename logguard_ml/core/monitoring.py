@@ -31,6 +31,12 @@ import pandas as pd
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
+# Import requests at module level
+try:
+    import requests
+except ImportError:
+    requests = None
+
 from .log_parser import LogParser
 from .advanced_ml import AdvancedAnomalyDetector
 from .performance import PerformanceMonitor, MemoryProfiler
@@ -167,8 +173,10 @@ class AlertManager:
     def _send_webhook_alert(self, anomaly_data: Dict):
         """Send webhook alert."""
         try:
-            import requests
-            
+            if requests is None:
+                logger.error("requests module not available for webhook alerts")
+                return
+                
             payload = {
                 'timestamp': datetime.now().isoformat(),
                 'anomaly_count': anomaly_data['count'],
@@ -222,6 +230,7 @@ class StreamProcessor:
             parser: Optional preconfigured log parser
             detector: Optional preconfigured anomaly detector
         """
+        self.config = config  # Add config attribute for tests
         self.parser = parser or LogParser(config)
         self.detector = detector or AdvancedAnomalyDetector(config)
         self.buffer_size = buffer_size
@@ -230,10 +239,90 @@ class StreamProcessor:
         self.line_buffer = []
         self.processed_buffer = []
         
+        # Queue for streaming
+        self.log_queue = Queue(maxsize=buffer_size)
+        self.is_running = False
+        
         # Performance tracking  
         self.total_processed = 0
         self.anomalies_detected = 0
         self.start_time = time.time()
+    
+    def add_log_entry(self, line: str):
+        """Add a log line to the processing queue."""
+        try:
+            self.log_queue.put_nowait(line)
+        except:
+            # If queue is full, remove oldest entry and add new one
+            try:
+                self.log_queue.get_nowait()
+                self.log_queue.put_nowait(line)
+            except:
+                pass
+    
+    def start(self):
+        """Start processing log entries."""
+        if self.is_running:
+            return
+        self.is_running = True
+        self.processor_thread = threading.Thread(target=self._process_loop, daemon=True)
+        self.processor_thread.start()
+        
+    def stop(self):
+        """Stop processing log entries."""
+        self.is_running = False
+        if hasattr(self, 'processor_thread'):
+            self.processor_thread.join(timeout=1.0)
+            
+    def process_batch(self, lines: List[str]) -> pd.DataFrame:
+        """Process a batch of log lines and return results."""
+        try:
+            # Use parse_log_lines if available, otherwise fall back to _parse_line
+            if hasattr(self.parser, 'parse_log_lines'):
+                df = self.parser.parse_log_lines(lines)
+            else:
+                # Parse lines individually
+                records = []
+                for line_num, line in enumerate(lines):
+                    try:
+                        parsed = self.parser._parse_line(line.strip(), line_num)
+                        if parsed:
+                            records.append(parsed)
+                    except:
+                        continue
+                        
+                if not records:
+                    return pd.DataFrame()
+                    
+                # Create DataFrame
+                df = pd.DataFrame(records)
+            
+            # Detect anomalies 
+            result = self.detector.detect_anomalies(df)
+            
+            return result
+        except Exception as e:
+            logger.error(f"Error processing batch: {e}")
+            return pd.DataFrame()
+        
+    def _process_loop(self):
+        """Main processing loop."""
+        while self.is_running:
+            lines = []
+            try:
+                while len(lines) < 100 and self.is_running:
+                    try:
+                        line = self.log_queue.get(timeout=0.1)
+                        lines.append(line)
+                    except:
+                        break
+                        
+                if lines:
+                    self.process_batch(lines)
+                    
+            except Exception as e:
+                logger.error(f"Error in processing loop: {e}")
+                continue
         
     def process_lines(self, lines: List[str]) -> List[Dict]:
         """
@@ -438,3 +527,118 @@ class LogMonitor:
                 'sample_messages': anomalies['message'].tolist()[:5]
             }
             self.alert_manager.send_alert(anomaly_data)
+    
+    def _on_file_modified(self):
+        """Handle file modification events."""
+        try:
+            new_lines = self._read_new_lines()
+            if new_lines:
+                for line in new_lines:
+                    self.line_queue.put(line)
+                logger.debug(f"Queued {len(new_lines)} new lines")
+        except Exception as e:
+            logger.error(f"Error reading new lines: {e}")
+    
+    def _read_new_lines(self) -> List[str]:
+        """Read new lines from the log file."""
+        if not self.log_path.exists():
+            return []
+        
+        try:
+            with open(self.log_path, 'r', encoding='utf-8', errors='ignore') as f:
+                # Check if file was truncated
+                f.seek(0, 2)  # Seek to end
+                current_size = f.tell()
+                
+                if current_size < self.last_position:
+                    # File was truncated, start from beginning
+                    logger.info("Log file was truncated, restarting from beginning")
+                    self.last_position = 0
+                
+                # Read from last position
+                f.seek(self.last_position)
+                new_content = f.read()
+                self.last_position = f.tell()
+                
+                # Split into lines
+                lines = new_content.strip().split('\n')
+                return [line for line in lines if line.strip()]
+                
+        except Exception as e:
+            logger.error(f"Error reading file: {e}")
+            return []
+    
+    def _processor_loop(self):
+        """Main processing loop for queued log lines."""
+        batch_size = 50
+        batch_timeout = 5.0  # seconds
+        
+        while self.is_monitoring:
+            lines = []
+            start_time = time.time()
+            
+            # Collect batch of lines
+            while len(lines) < batch_size and (time.time() - start_time) < batch_timeout:
+                try:
+                    line = self.line_queue.get(timeout=0.1)
+                    lines.append(line)
+                except Empty:
+                    continue
+            
+            # Process batch if we have lines
+            if lines:
+                self._process_batch(lines)
+    
+    def _process_batch(self, lines: List[str]):
+        """Process a batch of log lines."""
+        try:
+            # Process through stream processor
+            anomalies = self.stream_processor.process_lines(lines)
+            
+            # Send alerts if anomalies detected
+            if anomalies:
+                anomaly_data = {
+                    'count': len(anomalies),
+                    'timestamp': datetime.now().isoformat(),
+                    'sample_messages': [anomaly.get('message', '') for anomaly in anomalies[:5]]
+                }
+                
+                self.alert_manager.send_alert(anomaly_data)
+                
+                logger.warning(f"Detected {len(anomalies)} anomalies in batch")
+                
+        except Exception as e:
+            logger.error(f"Error processing batch: {e}")
+    
+    def _process_queue_remaining(self):
+        """Process remaining items in the queue."""
+        remaining_lines = []
+        
+        try:
+            while True:
+                line = self.line_queue.get_nowait()
+                remaining_lines.append(line)
+        except Empty:
+            pass
+        
+        if remaining_lines:
+            logger.debug(f"Processing {len(remaining_lines)} remaining lines")
+            self._process_batch(remaining_lines)
+        
+        # Flush stream processor buffer
+        final_anomalies = self.stream_processor.flush_buffer()
+        if final_anomalies:
+            logger.info(f"Found {len(final_anomalies)} anomalies in final buffer")
+    
+    def get_status(self) -> Dict:
+        """Get current monitoring status."""
+        stats = self.stream_processor.get_statistics()
+        
+        return {
+            'monitoring': self.is_monitoring,
+            'log_path': str(self.log_path),
+            'file_position': self.last_position,
+            'queue_size': self.line_queue.qsize(),
+            'processing_stats': stats,
+            'alerts_enabled': self.alert_manager.enabled
+        }
