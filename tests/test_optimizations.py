@@ -1,6 +1,7 @@
 """
 Additional tests to improve coverage for LogGuard ML optimizations.
 """
+from __future__ import annotations
 
 import pytest
 import tempfile
@@ -326,7 +327,7 @@ class TestMLModelExtended:
     @pytest.fixture
     def large_sample_data(self):
         return pd.DataFrame({
-            'timestamp': pd.date_range('2024-01-01', periods=100, freq='1H'),
+            'timestamp': pd.date_range('2024-01-01', periods=100, freq='1h'),
             'level': ['INFO'] * 50 + ['ERROR'] * 30 + ['WARN'] * 20,
             'message': [f'Message {i}' for i in range(100)],
             'line_number': range(1, 101)

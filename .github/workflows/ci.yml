@@ -32,8 +32,14 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        python -m pip install --upgrade setuptools wheel
         pip install -e .
         pip install pytest pytest-cov black isort flake8 mypy safety bandit
+        
+    - name: Verify installation
+      run: |
+        python -c "import logguard_ml; print(f'LogGuard ML version: {logguard_ml.__version__}')"
+        python -c "from logguard_ml.core.ml_model import AnomalyDetector; print('Core imports successful')"
         
     - name: Lint with flake8
       continue-on-error: true
