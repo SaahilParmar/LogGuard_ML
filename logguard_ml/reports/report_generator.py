@@ -1,8 +1,9 @@
 """
-HTML Report Generator for LogGuard ML
+Optimized HTML Report Generator for LogGuard ML
 
 This module generates comprehensive HTML reports from processed log data,
-featuring anomaly highlights, interactive visualizations, and detailed analytics.
+featuring anomaly highlights, interactive visualizations, detailed analytics,
+and performance optimizations including caching and memory efficiency.
 
 Functions:
     generate_html_report: Main function to generate HTML reports
@@ -16,14 +17,19 @@ Example:
 
 import logging
 import os
+import hashlib
+import pickle
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+import tempfile
 
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+from ..core.performance import PerformanceMonitor, MemoryProfiler, profile_function
 
 logger = logging.getLogger(__name__)
 
@@ -33,11 +39,68 @@ class ReportGenerationError(Exception):
     pass
 
 
+class ReportCache:
+    """Caching system for expensive report operations."""
+    
+    def __init__(self, cache_dir: Optional[Path] = None):
+        """Initialize report cache."""
+        self.cache_dir = cache_dir or Path(tempfile.gettempdir()) / "logguard_cache"
+        self.cache_dir.mkdir(exist_ok=True)
+        self.enabled = True
+        
+    def _get_cache_key(self, data: pd.DataFrame, operation: str) -> str:
+        """Generate cache key for data and operation."""
+        # Create hash based on data shape, columns, and operation
+        data_hash = hashlib.md5(
+            f"{data.shape}_{list(data.columns)}_{operation}".encode()
+        ).hexdigest()
+        return f"{operation}_{data_hash}"
+    
+    def get(self, data: pd.DataFrame, operation: str):
+        """Get cached result if available."""
+        if not self.enabled:
+            return None
+            
+        cache_key = self._get_cache_key(data, operation)
+        cache_file = self.cache_dir / f"{cache_key}.pkl"
+        
+        try:
+            if cache_file.exists():
+                with open(cache_file, 'rb') as f:
+                    logger.debug(f"Cache hit for {operation}")
+                    return pickle.load(f)
+        except Exception as e:
+            logger.debug(f"Cache read error: {e}")
+            
+        return None
+    
+    def set(self, data: pd.DataFrame, operation: str, result):
+        """Cache the result."""
+        if not self.enabled:
+            return
+            
+        cache_key = self._get_cache_key(data, operation)
+        cache_file = self.cache_dir / f"{cache_key}.pkl"
+        
+        try:
+            with open(cache_file, 'wb') as f:
+                pickle.dump(result, f)
+                logger.debug(f"Cached result for {operation}")
+        except Exception as e:
+            logger.debug(f"Cache write error: {e}")
+
+
+# Global cache instance
+_report_cache = ReportCache()
+
+
+@profile_function
 def generate_html_report(
     df: pd.DataFrame, 
     output_path: str = "reports/anomaly_report.html",
     title: str = "LogGuard ML - Anomaly Detection Report",
-    include_raw_data: bool = True
+    include_raw_data: bool = True,
+    use_cache: bool = True
 ) -> None:
     """
     Generate a comprehensive HTML report from processed log DataFrame.
@@ -47,6 +110,7 @@ def generate_html_report(
         output_path: Path to save the HTML report
         title: Report title to display
         include_raw_data: Whether to include raw data table in report
+        use_cache: Whether to use caching for expensive operations
         
     Raises:
         ReportGenerationError: If report generation fails
@@ -54,30 +118,45 @@ def generate_html_report(
     try:
         logger.info(f"Generating HTML report for {len(df)} log entries")
         
-        # Ensure output directory exists
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        # Configure cache
+        global _report_cache
+        _report_cache.enabled = use_cache
         
-        # Generate report components
-        summary_stats = _create_summary_stats(df)
-        visualizations = _create_visualizations(df)
-        anomaly_table = _create_anomaly_table(df)
-        
-        # Build HTML content
-        html_content = _build_html_report(
-            summary_stats=summary_stats,
-            visualizations=visualizations,
-            anomaly_table=anomaly_table,
-            raw_data_table=_create_raw_data_table(df) if include_raw_data else "",
-            title=title
-        )
-        
-        # Write to file
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(html_content)
+        with PerformanceMonitor() as monitor:
+            # Ensure output directory exists
+            output_path = Path(output_path)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
             
-        logger.info(f"Report saved to: {output_path}")
-        
+            # Optimize DataFrame memory usage
+            if not df.empty:
+                df = MemoryProfiler.optimize_dataframe(df.copy())
+            
+            # Generate report components with caching
+            summary_stats = _create_summary_stats(df)
+            visualizations = _create_visualizations(df)
+            anomaly_table = _create_anomaly_table(df)
+            
+            # Build HTML content
+            html_content = _build_html_report(
+                summary_stats=summary_stats,
+                visualizations=visualizations,
+                anomaly_table=anomaly_table,
+                raw_data_table=_create_raw_data_table(df) if include_raw_data else "",
+                title=title
+            )
+            
+            # Write to file
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(html_content)
+                
+            # Log performance statistics
+            stats = monitor.get_stats()
+            logger.info(f"Report generation completed:")
+            logger.info(f"  - Output: {output_path}")
+            logger.info(f"  - File size: {output_path.stat().st_size / 1024:.1f} KB")
+            logger.info(f"  - Generation time: {stats.execution_time:.2f}s")
+            logger.info(f"  - Peak memory: {stats.peak_memory_mb:.1f}MB")
+            
     except Exception as e:
         raise ReportGenerationError(f"Failed to generate report: {e}")
 

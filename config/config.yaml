@@ -1,6 +1,18 @@
 # --------------------------------------------------------
-# LogGuard ML - Configuration File
+# LogGuard ML - Enhanced Configuration File
 # --------------------------------------------------------
+
+# --------------------------------------------------------
+# Performance Settings
+# --------------------------------------------------------
+
+performance:
+  use_parallel_parsing: true
+  chunk_size: 10000
+  max_workers: 4
+  use_memory_optimization: true
+  enable_caching: true
+  stream_buffer_size: 100
 
 # --------------------------------------------------------
 # Log Patterns
@@ -8,17 +20,61 @@
 # --------------------------------------------------------
 
 log_patterns:
-  - pattern: "(?P<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?P<level>ERROR|WARN|INFO) (?P<message>.+)"
+  - pattern: "(?P<timestamp>\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}) (?P<level>ERROR|WARN|INFO|DEBUG) (?P<message>.+)"
+  - pattern: "(?P<timestamp>\\d{4}/\\d{2}/\\d{2} \\d{2}:\\d{2}:\\d{2}) (?P<level>\\w+) (?P<message>.+)"
 
 # --------------------------------------------------------
-# ML Model Parameters
+# Enhanced ML Model Parameters
 # --------------------------------------------------------
 
 ml_model:
-  algorithm: isolation_forest
-  contamination: 0.05        # Percentage of data to consider anomalous
+  algorithm: isolation_forest  # Options: isolation_forest, one_class_svm, local_outlier_factor, ensemble
+  contamination: 0.05          # Percentage of data to consider anomalous
   random_state: 42
   max_samples: auto
+  n_estimators: 100            # For isolation forest
+  max_features: 5000           # Maximum TF-IDF features
+  use_pca: true               # Use dimensionality reduction
+  n_components: 50            # PCA components
+  ngram_range: [1, 2]         # N-gram range for text features
+  use_hashing_vectorizer: false
+
+# --------------------------------------------------------
+# Real-time Monitoring
+# --------------------------------------------------------
+
+monitoring:
+  enabled: false
+  check_interval: 1.0         # seconds
+  buffer_size: 1000
+
+# --------------------------------------------------------
+# Alerting Configuration
+# --------------------------------------------------------
+
+alerting:
+  enabled: false
+  anomaly_threshold: 5        # Minimum anomalies to trigger alert
+  time_window_minutes: 5      # Time window for anomaly counting
+  throttle_minutes: 15        # Minimum time between alerts
+  
+  # Email alerting
+  email:
+    enabled: false
+    smtp_server: smtp.gmail.com
+    smtp_port: 587
+    from: alerts@yourcompany.com
+    to:
+      - admin@yourcompany.com
+    username: your_email@gmail.com
+    password: your_app_password
+  
+  # Webhook alerting
+  webhook:
+    enabled: false
+    url: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+    headers:
+      Content-Type: application/json
 
 # --------------------------------------------------------
 # Report Settings
@@ -26,6 +82,10 @@ ml_model:
 
 report:
   output_html: reports/anomaly_report.html
+  include_raw_data: true
+  max_anomalies_display: 100
+  use_cache: true
+  template: default
 
 # --------------------------------------------------------
 # Thresholds
@@ -35,6 +95,19 @@ report:
 thresholds:
   error_count: 10      # Flag logs if ERROR count exceeds this
   warn_count: 20       # Flag logs if WARN count exceeds this
+  anomaly_rate: 5.0    # Percentage threshold for anomaly rate
+
+# --------------------------------------------------------
+# Output Configuration
+# --------------------------------------------------------
+
+output:
+  formats:
+    - html
+    - json
+    - csv
+  include_confidence_scores: true
+  include_feature_importance: true
 
 # --------------------------------------------------------
 # Columns to include in report tables
@@ -45,3 +118,5 @@ report_columns:
   - level
   - message
   - is_anomaly
+  - anomaly_score
+  - confidence
