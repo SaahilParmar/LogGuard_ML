@@ -212,24 +212,25 @@ class AlertManager:
 class StreamProcessor:
     """High-performance streaming processor for real-time log analysis."""
     
-    def __init__(self, parser: LogParser, detector: AdvancedAnomalyDetector, buffer_size: int = 1000):
+    def __init__(self, config: Dict, buffer_size: int = 1000, parser: Optional[LogParser] = None, detector: Optional[AdvancedAnomalyDetector] = None):
         """
         Initialize stream processor.
         
         Args:
-            parser: Configured log parser
-            detector: Trained anomaly detector
+            config: Configuration dictionary
             buffer_size: Size of processing buffer
+            parser: Optional preconfigured log parser
+            detector: Optional preconfigured anomaly detector
         """
-        self.parser = parser
-        self.detector = detector
+        self.parser = parser or LogParser(config)
+        self.detector = detector or AdvancedAnomalyDetector(config)
         self.buffer_size = buffer_size
         
         # Processing buffers
         self.line_buffer = []
         self.processed_buffer = []
         
-        # Performance tracking
+        # Performance tracking  
         self.total_processed = 0
         self.anomalies_detected = 0
         self.start_time = time.time()
@@ -337,13 +338,14 @@ class LogMonitor:
         self.detector = AdvancedAnomalyDetector(config)
         self.alert_manager = AlertManager(config)
         self.stream_processor = StreamProcessor(
-            self.parser, 
-            self.detector,
-            buffer_size=config.get("stream_buffer_size", 100)
+            config=config,
+            buffer_size=config.get("stream_buffer_size", 100),
+            parser=self.parser,
+            detector=self.detector
         )
         
         # Monitoring state
-        self.monitoring = False
+        self.is_monitoring = False  # Changed from monitoring to is_monitoring
         self.observer = None
         self.processor_thread = None
         self.line_queue = Queue()
@@ -354,6 +356,10 @@ class LogMonitor:
         
         # Performance monitoring
         self.monitor_start_time = None
+        
+        # Validate file exists
+        if not self.log_path.exists():
+            raise FileNotFoundError(f"Log file not found: {self.log_path}")
         
         logger.info(f"LogMonitor initialized for {self.log_path}")
     
@@ -367,12 +373,12 @@ class LogMonitor:
     
     def start_monitoring(self):
         """Start real-time log monitoring."""
-        if self.monitoring:
+        if self.is_monitoring:
             logger.warning("Monitoring already started")
             return
         
         logger.info(f"Starting real-time monitoring of {self.log_path}")
-        self.monitoring = True
+        self.is_monitoring = True
         self.monitor_start_time = time.time()
         
         # Start file watcher
@@ -389,12 +395,12 @@ class LogMonitor:
     
     def stop_monitoring(self):
         """Stop real-time log monitoring."""
-        if not self.monitoring:
+        if not self.is_monitoring:
             logger.warning("Monitoring not started")
             return
         
         logger.info("Stopping real-time monitoring")
-        self.monitoring = False
+        self.is_monitoring = False
         
         # Stop file watcher
         if self.observer:
@@ -415,117 +421,20 @@ class LogMonitor:
         logger.info(f"  - Anomaly rate: {stats['anomaly_rate']:.2f}%")
         logger.info(f"  - Throughput: {stats['throughput']:.1f} entries/sec")
     
-    def _on_file_modified(self):
-        """Handle file modification events."""
-        try:
-            new_lines = self._read_new_lines()
-            if new_lines:
-                for line in new_lines:
-                    self.line_queue.put(line)
-                logger.debug(f"Queued {len(new_lines)} new lines")
-        except Exception as e:
-            logger.error(f"Error reading new lines: {e}")
-    
-    def _read_new_lines(self) -> List[str]:
+    def read_new_lines(self) -> List[str]:  # Made public
         """Read new lines from the log file."""
-        if not self.log_path.exists():
-            return []
-        
-        try:
-            with open(self.log_path, 'r', encoding='utf-8', errors='ignore') as f:
-                # Check if file was truncated
-                f.seek(0, 2)  # Seek to end
-                current_size = f.tell()
-                
-                if current_size < self.last_position:
-                    # File was truncated, start from beginning
-                    logger.info("Log file was truncated, restarting from beginning")
-                    self.last_position = 0
-                
-                # Read from last position
-                f.seek(self.last_position)
-                new_content = f.read()
-                self.last_position = f.tell()
-                
-                # Split into lines
-                lines = new_content.strip().split('\n')
-                return [line for line in lines if line.strip()]
-                
-        except Exception as e:
-            logger.error(f"Error reading file: {e}")
-            return []
+        return self._read_new_lines()
     
-    def _processor_loop(self):
-        """Main processing loop for queued log lines."""
-        batch_size = 50
-        batch_timeout = 5.0  # seconds
-        
-        while self.monitoring:
-            lines = []
-            start_time = time.time()
+    def process_anomalies(self, df: pd.DataFrame):  # Added public method
+        """Process anomalies in the given DataFrame."""
+        if df.empty:
+            return
             
-            # Collect batch of lines
-            while len(lines) < batch_size and (time.time() - start_time) < batch_timeout:
-                try:
-                    line = self.line_queue.get(timeout=0.1)
-                    lines.append(line)
-                except Empty:
-                    continue
-            
-            # Process batch if we have lines
-            if lines:
-                self._process_batch(lines)
-    
-    def _process_batch(self, lines: List[str]):
-        """Process a batch of log lines."""
-        try:
-            # Process through stream processor
-            anomalies = self.stream_processor.process_lines(lines)
-            
-            # Send alerts if anomalies detected
-            if anomalies:
-                anomaly_data = {
-                    'count': len(anomalies),
-                    'timestamp': datetime.now().isoformat(),
-                    'sample_messages': [anomaly.get('message', '') for anomaly in anomalies[:5]]
-                }
-                
-                self.alert_manager.send_alert(anomaly_data)
-                
-                logger.warning(f"Detected {len(anomalies)} anomalies in batch")
-                
-        except Exception as e:
-            logger.error(f"Error processing batch: {e}")
-    
-    def _process_queue_remaining(self):
-        """Process remaining items in the queue."""
-        remaining_lines = []
-        
-        try:
-            while True:
-                line = self.line_queue.get_nowait()
-                remaining_lines.append(line)
-        except Empty:
-            pass
-        
-        if remaining_lines:
-            logger.debug(f"Processing {len(remaining_lines)} remaining lines")
-            self._process_batch(remaining_lines)
-        
-        # Flush stream processor buffer
-        final_anomalies = self.stream_processor.flush_buffer()
-        if final_anomalies:
-            logger.info(f"Found {len(final_anomalies)} anomalies in final buffer")
-    
-    def get_status(self) -> Dict:
-        """Get current monitoring status."""
-        stats = self.stream_processor.get_statistics()
-        
-        return {
-            'monitoring': self.monitoring,
-            'log_path': str(self.log_path),
-            'file_position': self.last_position,
-            'queue_size': self.line_queue.qsize(),
-            'processing_stats': stats,
-            'alerts_enabled': self.alert_manager.enabled
-        }
+        anomalies = df[df['is_anomaly'] == 1]
+        if not anomalies.empty:
+            anomaly_data = {
+                'count': len(anomalies),
+                'timestamp': datetime.now().isoformat(),
+                'sample_messages': anomalies['message'].tolist()[:5]
+            }
+            self.alert_manager.send_alert(anomaly_data)
