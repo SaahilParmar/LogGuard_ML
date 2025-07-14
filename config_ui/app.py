@@ -117,20 +117,18 @@ class ConfigManager:
 config_manager = ConfigManager()
 
 
-@app.route('/') if app else lambda: None
+# Route definitions
 def index():
     """Main dashboard page."""
     return render_template('index.html', version=__version__)
 
 
-@app.route('/config') if app else lambda: None
 def config_page():
     """Configuration editing page."""
     config = config_manager.load_config()
     return render_template('config.html', config=config)
 
 
-@app.route('/api/config', methods=['GET', 'POST']) if app else lambda: None
 def api_config():
     """API endpoint for configuration management."""
     if request.method == 'GET':
@@ -155,7 +153,6 @@ def api_config():
             return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route('/plugins') if app else lambda: None
 def plugins_page():
     """Plugin management page."""
     # Load plugins
@@ -176,7 +173,6 @@ def plugins_page():
     return render_template('plugins.html', plugins=plugin_info)
 
 
-@app.route('/api/plugins') if app else lambda: None
 def api_plugins():
     """API endpoint for plugin information."""
     plugin_manager.load_plugins_from_directory(PLUGIN_DIR)
@@ -188,13 +184,11 @@ def api_plugins():
     })
 
 
-@app.route('/monitoring') if app else lambda: None
 def monitoring_page():
     """Real-time monitoring page."""
     return render_template('monitoring.html')
 
 
-@app.route('/api/system_status') if app else lambda: None
 def api_system_status():
     """API endpoint for system status."""
     try:
@@ -230,7 +224,6 @@ def api_system_status():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/reports') if app else lambda: None
 def reports_page():
     """Reports management page."""
     reports = []
@@ -254,13 +247,11 @@ def reports_page():
     return render_template('reports.html', reports=reports)
 
 
-@app.route('/reports/<filename>') if app else lambda: None
 def serve_report(filename):
     """Serve report files."""
     return send_from_directory(REPORTS_DIR, filename)
 
 
-@app.route('/api/performance_metrics') if app else lambda: None
 def api_performance_metrics():
     """API endpoint for performance metrics."""
     # This would typically come from a metrics database
@@ -287,6 +278,20 @@ def api_performance_metrics():
     }
     
     return jsonify(metrics)
+
+
+# Register routes if Flask is available
+if app:
+    app.route('/')(index)
+    app.route('/config')(config_page)
+    app.route('/api/config', methods=['GET', 'POST'])(api_config)
+    app.route('/plugins')(plugins_page)
+    app.route('/api/plugins')(api_plugins)
+    app.route('/monitoring')(monitoring_page)
+    app.route('/api/system_status')(api_system_status)
+    app.route('/reports')(reports_page)
+    app.route('/reports/<filename>')(serve_report)
+    app.route('/api/performance_metrics')(api_performance_metrics)
 
 
 def create_templates():
