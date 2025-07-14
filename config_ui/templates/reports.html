@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - LogGuard ML{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-file-alt"></i> Analysis Reports</h1>
+    <div>
+        <button class="btn btn-primary" onclick="generateReport()">
+            <i class="fas fa-plus"></i> Generate New Report
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-list"></i> Available Reports</h5>
+            </div>
+            <div class="card-body">
+                {% if reports %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-file"></i> Report Name</th>
+                                <th><i class="fas fa-weight"></i> Size</th>
+                                <th><i class="fas fa-clock"></i> Last Modified</th>
+                                <th><i class="fas fa-cogs"></i> Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for report in reports %}
+                            <tr>
+                                <td>
+                                    <strong>{{ report.name }}</strong>
+                                </td>
+                                <td>{{ report.size_mb }} MB</td>
+                                <td>{{ report.modified }}</td>
+                                <td>
+                                    <a href="/reports/{{ report.name }}" class="btn btn-sm btn-primary" target="_blank">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    <a href="/reports/{{ report.name }}" class="btn btn-sm btn-success ms-1" download>
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                    <button class="btn btn-sm btn-danger ms-1" onclick="deleteReport('{{ report.name }}')">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No reports found</h5>
+                    <p class="text-muted">Generate your first analysis report to get started.</p>
+                    <button class="btn btn-primary" onclick="generateReport()">
+                        <i class="fas fa-plus"></i> Generate Report
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-bar"></i> Report Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <h3>{{ reports|length }}</h3>
+                        <small class="text-muted">Total Reports</small>
+                    </div>
+                    <div class="col-md-4">
+                        <h3>{{ (reports|sum(attribute='size_mb'))|round(2) }}</h3>
+                        <small class="text-muted">Total Size (MB)</small>
+                    </div>
+                    <div class="col-md-4">
+                        <h3 id="latest-report">-</h3>
+                        <small class="text-muted">Latest Report</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-magic"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-primary" onclick="generateSampleReport()">
+                        <i class="fas fa-file-medical"></i> Generate Sample Report
+                    </button>
+                    <button class="btn btn-outline-success" onclick="exportAllReports()">
+                        <i class="fas fa-archive"></i> Export All Reports
+                    </button>
+                    <button class="btn btn-outline-warning" onclick="cleanupOldReports()">
+                        <i class="fas fa-broom"></i> Cleanup Old Reports
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Report Generation Modal -->
+<div class="modal fade" id="reportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-plus"></i> Generate New Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="reportForm">
+                    <div class="mb-3">
+                        <label class="form-label">Log File Path</label>
+                        <input type="text" class="form-control" id="logPath" value="data/sample_log.log">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Report Format</label>
+                        <select class="form-select" id="reportFormat">
+                            <option value="html">HTML Report</option>
+                            <option value="json">JSON Report</option>
+                            <option value="csv">CSV Report</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">ML Algorithm</label>
+                        <select class="form-select" id="mlAlgorithm">
+                            <option value="isolation_forest">Isolation Forest</option>
+                            <option value="one_class_svm">One-Class SVM</option>
+                            <option value="local_outlier_factor">Local Outlier Factor</option>
+                            <option value="ensemble">Ensemble</option>
+                        </select>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="enableML" checked>
+                        <label class="form-check-label" for="enableML">
+                            Enable ML Anomaly Detection
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitReportGeneration()">
+                    <i class="fas fa-cog fa-spin" id="generateSpinner" style="display: none;"></i>
+                    Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    updateLatestReport();
+});
+
+function updateLatestReport() {
+    {% if reports %}
+    const latestReport = "{{ reports[0].modified }}";
+    const reportDate = new Date(latestReport);
+    const now = new Date();
+    const diffHours = Math.floor((now - reportDate) / (1000 * 60 * 60));
+    
+    if (diffHours < 1) {
+        document.getElementById('latest-report').textContent = 'Just now';
+    } else if (diffHours < 24) {
+        document.getElementById('latest-report').textContent = diffHours + 'h ago';
+    } else {
+        document.getElementById('latest-report').textContent = Math.floor(diffHours / 24) + 'd ago';
+    }
+    {% else %}
+    document.getElementById('latest-report').textContent = 'None';
+    {% endif %}
+}
+
+function generateReport() {
+    const modal = new bootstrap.Modal(document.getElementById('reportModal'));
+    modal.show();
+}
+
+function submitReportGeneration() {
+    const spinner = document.getElementById('generateSpinner');
+    const logPath = document.getElementById('logPath').value;
+    const format = document.getElementById('reportFormat').value;
+    const algorithm = document.getElementById('mlAlgorithm').value;
+    const enableML = document.getElementById('enableML').checked;
+    
+    spinner.style.display = 'inline-block';
+    
+    // Simulate report generation (in real implementation, this would call the CLI)
+    setTimeout(() => {
+        spinner.style.display = 'none';
+        const modal = bootstrap.Modal.getInstance(document.getElementById('reportModal'));
+        modal.hide();
+        
+        // Show success message
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success alert-dismissible fade show';
+        alert.innerHTML = `
+            <i class="fas fa-check"></i> Report generated successfully!
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.card-body').insertBefore(alert, document.querySelector('.table-responsive'));
+        
+        // Reload page after 2 seconds
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
+    }, 3000);
+}
+
+function generateSampleReport() {
+    document.getElementById('logPath').value = 'data/sample_log.log';
+    document.getElementById('reportFormat').value = 'html';
+    document.getElementById('enableML').checked = true;
+    generateReport();
+}
+
+function deleteReport(reportName) {
+    if (confirm(`Are you sure you want to delete ${reportName}?`)) {
+        // In real implementation, this would call an API endpoint
+        alert('Report deletion would be implemented here');
+    }
+}
+
+function exportAllReports() {
+    alert('Export functionality would be implemented here');
+}
+
+function cleanupOldReports() {
+    if (confirm('This will delete reports older than 30 days. Continue?')) {
+        alert('Cleanup functionality would be implemented here');
+    }
+}
+</script>
+{% endblock %}

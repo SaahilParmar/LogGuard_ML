@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}Monitoring - LogGuard ML{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-chart-line"></i> Real-time Monitoring</h1>
+    <div>
+        <span class="badge bg-success">
+            <i class="fas fa-circle" style="font-size: 8px;"></i> Live
+        </span>
+    </div>
+</div>
+
+<div class="row">
+    <!-- System Metrics -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-server"></i> System Metrics</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="systemMetricsChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- LogGuard Status -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-shield-alt"></i> LogGuard Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-4">
+                        <h3 id="config-status" class="text-success">✓</h3>
+                        <small>Configuration</small>
+                    </div>
+                    <div class="col-md-4">
+                        <h3 id="plugins-count">-</h3>
+                        <small>Plugins</small>
+                    </div>
+                    <div class="col-md-4">
+                        <h3 id="version-info">-</h3>
+                        <small>Version</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- Performance Metrics -->
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-tachometer-alt"></i> Performance Metrics</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="performanceChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <!-- System Information -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-info-circle"></i> System Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>CPU Usage:</strong></td>
+                        <td><span id="cpu-percent">-</span>%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Memory Usage:</strong></td>
+                        <td><span id="memory-percent">-</span>%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Available Memory:</strong></td>
+                        <td><span id="memory-available">-</span> GB</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Disk Usage:</strong></td>
+                        <td><span id="disk-percent">-</span>%</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Free Disk:</strong></td>
+                        <td><span id="disk-free">-</span> GB</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-history"></i> Recent Activity</h5>
+            </div>
+            <div class="card-body">
+                <div id="activity-log" style="height: 200px; overflow-y: auto;">
+                    <p class="text-muted">Monitoring started...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let systemChart, performanceChart;
+let activityLog = [];
+
+// Initialize charts
+function initCharts() {
+    // System metrics chart
+    const systemCtx = document.getElementById('systemMetricsChart').getContext('2d');
+    systemChart = new Chart(systemCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'CPU %',
+                    data: [],
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                    tension: 0.1
+                },
+                {
+                    label: 'Memory %',
+                    data: [],
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            }
+        }
+    });
+    
+    // Performance chart
+    const perfCtx = document.getElementById('performanceChart').getContext('2d');
+    performanceChart = new Chart(perfCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: 'Logs/sec',
+                    data: [],
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                    yAxisID: 'y'
+                },
+                {
+                    label: 'Memory MB',
+                    data: [],
+                    borderColor: 'rgb(255, 205, 86)',
+                    backgroundColor: 'rgba(255, 205, 86, 0.1)',
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                }
+            }
+        }
+    });
+}
+
+// Update system status
+function updateSystemStatus() {
+    fetch('/api/system_status')
+        .then(response => response.json())
+        .then(data => {
+            // Update system info
+            document.getElementById('cpu-percent').textContent = data.system.cpu_percent.toFixed(1);
+            document.getElementById('memory-percent').textContent = data.system.memory_percent.toFixed(1);
+            document.getElementById('memory-available').textContent = data.system.memory_available_gb;
+            document.getElementById('disk-percent').textContent = data.system.disk_percent.toFixed(1);
+            document.getElementById('disk-free').textContent = data.system.disk_free_gb;
+            
+            // Update LogGuard status
+            document.getElementById('config-status').textContent = data.logguard.config_valid ? '✓' : '✗';
+            document.getElementById('config-status').className = data.logguard.config_valid ? 'text-success' : 'text-danger';
+            document.getElementById('plugins-count').textContent = data.logguard.plugins_loaded;
+            document.getElementById('version-info').textContent = data.logguard.version;
+            
+            // Update charts
+            const now = new Date().toLocaleTimeString();
+            updateChart(systemChart, now, [data.system.cpu_percent, data.system.memory_percent]);
+            
+            // Log activity
+            addActivity(`System check: CPU ${data.system.cpu_percent.toFixed(1)}%, Memory ${data.system.memory_percent.toFixed(1)}%`);
+        })
+        .catch(error => {
+            addActivity('Error fetching system status');
+        });
+}
+
+// Update performance metrics
+function updatePerformanceMetrics() {
+    fetch('/api/performance_metrics')
+        .then(response => response.json())
+        .then(data => {
+            if (data.parsing_performance && data.parsing_performance.length > 0) {
+                const latest = data.parsing_performance[0];
+                const time = new Date(latest.timestamp).toLocaleTimeString();
+                updateChart(performanceChart, time, [latest.logs_per_second, latest.memory_usage_mb]);
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching performance metrics:', error);
+        });
+}
+
+// Update chart with new data
+function updateChart(chart, label, data) {
+    chart.data.labels.push(label);
+    chart.data.datasets.forEach((dataset, index) => {
+        dataset.data.push(data[index]);
+    });
+    
+    // Keep only last 20 data points
+    if (chart.data.labels.length > 20) {
+        chart.data.labels.shift();
+        chart.data.datasets.forEach(dataset => {
+            dataset.data.shift();
+        });
+    }
+    
+    chart.update('none');
+}
+
+// Add activity to log
+function addActivity(message) {
+    const timestamp = new Date().toLocaleTimeString();
+    activityLog.unshift(`[${timestamp}] ${message}`);
+    
+    // Keep only last 50 entries
+    if (activityLog.length > 50) {
+        activityLog = activityLog.slice(0, 50);
+    }
+    
+    const logDiv = document.getElementById('activity-log');
+    logDiv.innerHTML = activityLog.map(entry => `<p class="mb-1 small">${entry}</p>`).join('');
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initCharts();
+    updateSystemStatus();
+    updatePerformanceMetrics();
+    addActivity('Monitoring dashboard initialized');
+    
+    // Update every 5 seconds
+    setInterval(() => {
+        updateSystemStatus();
+        updatePerformanceMetrics();
+    }, 5000);
+});
+</script>
+{% endblock %}
