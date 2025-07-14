@@ -18,11 +18,33 @@ import psutil
 import gc
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 from typing import Dict, List, Tuple, Any, Optional
 from pathlib import Path
 import json
+
+# Optional visualization dependencies
+import importlib
+MATPLOTLIB_AVAILABLE = False
+SEABORN_AVAILABLE = False
+plt = None
+sns = None
+
+try:
+    plt = importlib.import_module('matplotlib.pyplot')
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    pass
+
+try:
+    sns = importlib.import_module('seaborn')
+    SEABORN_AVAILABLE = True
+except ImportError:
+    pass
+
+VISUALIZATION_AVAILABLE = MATPLOTLIB_AVAILABLE and SEABORN_AVAILABLE
+
+if not VISUALIZATION_AVAILABLE:
+    print("Warning: matplotlib/seaborn not available. Visualizations will be skipped.")
 import tracemalloc
 from datetime import datetime
 import sys
@@ -48,9 +70,13 @@ class PluginBenchmark:
         # Initialize plugin manager
         self.plugin_manager = PluginManager()
         
-        # Setup plotting style
-        plt.style.use('seaborn-v0_8')
-        sns.set_palette("husl")
+        # Setup plotting style if available
+        if VISUALIZATION_AVAILABLE:
+            try:
+                plt.style.use('default')
+                sns.set_palette("husl")
+            except Exception as e:
+                print(f"Warning: Could not set plot style: {e}")
     
     def generate_test_datasets(self) -> None:
         """Generate test datasets of various sizes."""
@@ -81,7 +107,7 @@ class PluginBenchmark:
         
         # Generate timestamps (last 30 days)
         start_time = pd.Timestamp.now() - pd.Timedelta(days=30)
-        timestamps = pd.date_range(start=start_time, periods=n_records, freq='S')
+        timestamps = pd.date_range(start=start_time, periods=n_records, freq='s')  # Use 's' instead of 'S'
         
         # Generate messages with varying complexity
         base_messages = [
@@ -390,6 +416,10 @@ class PluginBenchmark:
         """Generate performance visualization charts."""
         print("\nGenerating visualizations...")
         
+        if not VISUALIZATION_AVAILABLE:
+            print("Skipping visualizations (matplotlib/seaborn not available)")
+            return
+        
         # Extract performance data
         performance_data = []
         
@@ -622,6 +652,12 @@ def main():
                 result.loc[long_messages, 'anomaly_score'] = 0.8
             
             return result
+        
+        def get_feature_importance(self) -> dict:
+            """Return feature importance for this simple detector."""
+            return {
+                'message_length': 1.0
+            }
     
     # Example Output Format for testing
     class ExampleFormat(OutputFormatPlugin):
