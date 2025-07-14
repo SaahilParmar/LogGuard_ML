@@ -1,0 +1,57 @@
+name: "example_ml_detectors"
+version: "1.0.0"
+description: "Example ML detector plugins for LogGuard ML"
+author: "LogGuard ML Team"
+dependencies:
+  - "scikit-learn>=1.0.0"
+  - "numpy>=1.21.0"
+  - "pandas>=1.3.0"
+
+config_schema:
+  dbscan:
+    type: "object"
+    properties:
+      eps:
+        type: "number"
+        minimum: 0.1
+        maximum: 2.0
+        default: 0.5
+        description: "The maximum distance between two samples for one to be considered as in the neighborhood of the other"
+      min_samples:
+        type: "integer"
+        minimum: 1
+        maximum: 20
+        default: 5
+        description: "The number of samples in a neighborhood for a point to be considered as a core point"
+  
+  random_forest:
+    type: "object"
+    properties:
+      n_estimators:
+        type: "integer"
+        minimum: 10
+        maximum: 500
+        default: 100
+        description: "The number of trees in the forest"
+      contamination:
+        type: "number"
+        minimum: 0.01
+        maximum: 0.5
+        default: 0.1
+        description: "Expected proportion of anomalies in the data"
+  
+  statistical:
+    type: "object"
+    properties:
+      z_threshold:
+        type: "number"
+        minimum: 1.0
+        maximum: 5.0
+        default: 3.0
+        description: "Z-score threshold for anomaly detection"
+      iqr_factor:
+        type: "number"
+        minimum: 1.0
+        maximum: 3.0
+        default: 1.5
+        description: "IQR factor for outlier detection"

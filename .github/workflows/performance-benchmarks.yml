@@ -1,0 +1,222 @@
+name: Performance Benchmarks
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main ]
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      iterations:
+        description: 'Number of benchmark iterations'
+        required: false
+        default: '3'
+        type: string
+
+jobs:
+  performance-benchmarks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12"]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch full history for baseline comparison
+        
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/pyproject.toml') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install pytest pytest-cov
+        
+    - name: Create benchmark directories
+      run: |
+        mkdir -p benchmarks/results
+        mkdir -p benchmarks/baselines
+        
+    - name: Download baseline benchmarks
+      continue-on-error: true
+      run: |
+        # Try to download previous baseline from artifacts
+        gh run list --workflow=performance-benchmarks --limit=1 --json databaseId,conclusion | \
+        jq -r '.[] | select(.conclusion == "success") | .databaseId' | \
+        xargs -I {} gh run download {} --name benchmark-baseline-${{ matrix.python-version }} || echo "No baseline found"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Run performance benchmarks
+      run: |
+        python scripts/benchmark_runner.py --run-all --iterations ${{ github.event.inputs.iterations || '3' }} --output current_results.json
+        
+    - name: Compare with baseline (if available)
+      id: compare
+      continue-on-error: true
+      run: |
+        if [ -f "benchmarks/baselines/baseline_py${{ matrix.python-version }}.json" ]; then
+          echo "Comparing with baseline..."
+          python scripts/benchmark_runner.py --compare benchmarks/baselines/baseline_py${{ matrix.python-version }}.json benchmarks/results/current_results.json > comparison_result.txt
+          echo "comparison_available=true" >> $GITHUB_OUTPUT
+          
+          # Check if there are regressions
+          if grep -q "PERFORMANCE REGRESSIONS DETECTED" comparison_result.txt; then
+            echo "regressions_found=true" >> $GITHUB_OUTPUT
+          else
+            echo "regressions_found=false" >> $GITHUB_OUTPUT
+          fi
+        else
+          echo "No baseline available for comparison"
+          echo "comparison_available=false" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request' && steps.compare.outputs.comparison_available == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          let comment = `## 🚀 Performance Benchmark Results (Python ${{ matrix.python-version }})\n\n`;
+          
+          try {
+            const comparisonResult = fs.readFileSync('comparison_result.txt', 'utf8');
+            comment += '### Comparison with Baseline\n\n';
+            comment += '```\n' + comparisonResult + '\n```\n\n';
+            
+            if ('${{ steps.compare.outputs.regressions_found }}' === 'true') {
+              comment += '⚠️ **Performance regressions detected!** Please review the changes.\n\n';
+            } else {
+              comment += '✅ No significant performance regressions detected.\n\n';
+            }
+          } catch (error) {
+            comment += 'Benchmark comparison failed. Check the workflow logs for details.\n\n';
+          }
+          
+          // Add benchmark report if available
+          try {
+            const reportContent = fs.readFileSync('benchmarks/results/current_results.md', 'utf8');
+            comment += '<details>\n<summary>📊 Detailed Results</summary>\n\n';
+            comment += reportContent;
+            comment += '\n</details>\n';
+          } catch (error) {
+            console.log('No detailed report available');
+          }
+          
+          // Find existing comment and update or create new one
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+          
+          const existingComment = comments.find(comment => 
+            comment.body.includes('Performance Benchmark Results (Python ${{ matrix.python-version }})')
+          );
+          
+          if (existingComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: comment
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+          }
+          
+    - name: Fail if regressions detected
+      if: steps.compare.outputs.regressions_found == 'true'
+      run: |
+        echo "❌ Performance regressions detected. Failing the build."
+        cat comparison_result.txt
+        exit 1
+        
+    - name: Upload benchmark results as artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-results-${{ matrix.python-version }}
+        path: |
+          benchmarks/results/current_results.json
+          benchmarks/results/current_results.md
+          comparison_result.txt
+        retention-days: 30
+        
+    - name: Save as new baseline (main branch only)
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-baseline-${{ matrix.python-version }}
+        path: benchmarks/results/current_results.json
+        retention-days: 90
+        
+    - name: Update performance metrics (main branch only)
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: |
+        # Here you could send metrics to a monitoring service
+        echo "Updating performance metrics database..."
+        # Example: curl -X POST "https://metrics.example.com/api/benchmarks" \
+        #   -H "Content-Type: application/json" \
+        #   -d @benchmarks/results/current_results.json
+        
+  performance-summary:
+    needs: performance-benchmarks
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Download all benchmark results
+      uses: actions/download-artifact@v3
+      with:
+        path: benchmark-artifacts
+        
+    - name: Generate summary report
+      run: |
+        echo "# 📊 Performance Benchmark Summary" > summary.md
+        echo "" >> summary.md
+        echo "| Python Version | Status | Results |" >> summary.md
+        echo "|---|---|---|" >> summary.md
+        
+        for version in "3.9" "3.10" "3.11" "3.12"; do
+          if [ -d "benchmark-artifacts/benchmark-results-$version" ]; then
+            echo "| $version | ✅ Completed | [View Results](benchmark-artifacts/benchmark-results-$version/) |" >> summary.md
+          else
+            echo "| $version | ❌ Failed | - |" >> summary.md
+          fi
+        done
+        
+        echo "" >> summary.md
+        echo "_Generated on $(date)_" >> summary.md
+        
+        cat summary.md
+        
+    - name: Upload summary
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-summary
+        path: summary.md
+        retention-days: 30

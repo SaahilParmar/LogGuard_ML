@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - LogGuard ML{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="fas fa-home"></i> Dashboard</h1>
+    <span class="badge bg-secondary">v{{ version }}</span>
+</div>
+
+<div class="row">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-shield-alt fa-2x text-primary mb-2"></i>
+                <h5>System Status</h5>
+                <span class="status-indicator status-success"></span>
+                <span class="ms-2">Operational</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-puzzle-piece fa-2x text-info mb-2"></i>
+                <h5>Plugins</h5>
+                <h3 id="plugin-count">-</h3>
+                <small>Loaded</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-cpu fa-2x text-warning mb-2"></i>
+                <h5>CPU Usage</h5>
+                <h3 id="cpu-usage">-</h3>
+                <small>Percent</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-memory fa-2x text-danger mb-2"></i>
+                <h5>Memory</h5>
+                <h3 id="memory-usage">-</h3>
+                <small>Percent</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="fas fa-chart-line"></i> System Metrics</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="metricsChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Update system status
+function updateSystemStatus() {
+    fetch('/api/system_status')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('cpu-usage').textContent = data.system.cpu_percent + '%';
+            document.getElementById('memory-usage').textContent = data.system.memory_percent + '%';
+        });
+    
+    fetch('/api/plugins')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('plugin-count').textContent = data.total_count;
+        });
+}
+
+// Initialize chart
+const ctx = document.getElementById('metricsChart').getContext('2d');
+const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [{
+            label: 'CPU Usage %',
+            data: [],
+            borderColor: 'rgb(255, 193, 7)',
+            tension: 0.1
+        }, {
+            label: 'Memory Usage %',
+            data: [],
+            borderColor: 'rgb(220, 53, 69)',
+            tension: 0.1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100
+            }
+        }
+    }
+});
+
+// Update every 5 seconds
+setInterval(updateSystemStatus, 5000);
+updateSystemStatus();
+</script>
+{% endblock %}

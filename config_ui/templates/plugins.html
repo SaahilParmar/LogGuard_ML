@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plugins - LogGuard ML</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <h1>LogGuard ML Plugin Management</h1>
+            <div class="nav-links">
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('config') }}">Configuration</a>
+                <a href="{{ url_for('plugins') }}" class="active">Plugins</a>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="plugins-section">
+                <div class="section-header">
+                    <h2>Plugin Management</h2>
+                    <div class="plugin-actions">
+                        <button id="refresh-plugins" class="btn btn-secondary">Refresh</button>
+                        <button id="load-plugins" class="btn btn-primary">Load Plugins</button>
+                    </div>
+                </div>
+
+                <div class="plugin-tabs">
+                    <button class="tab-button active" data-tab="ml-detectors">ML Detectors</button>
+                    <button class="tab-button" data-tab="output-formats">Output Formats</button>
+                    <button class="tab-button" data-tab="log-parsers">Log Parsers</button>
+                </div>
+
+                <!-- ML Detectors Tab -->
+                <div id="ml-detectors" class="tab-content active">
+                    <div class="plugins-grid">
+                        {% for plugin in ml_detectors %}
+                        <div class="plugin-card" data-plugin="{{ plugin.name }}">
+                            <div class="plugin-header">
+                                <h3>{{ plugin.name }}</h3>
+                                <span class="plugin-status {{ 'enabled' if plugin.enabled else 'disabled' }}">
+                                    {{ 'Enabled' if plugin.enabled else 'Disabled' }}
+                                </span>
+                            </div>
+                            <div class="plugin-body">
+                                <p class="plugin-description">{{ plugin.description }}</p>
+                                <div class="plugin-details">
+                                    <div class="detail-item">
+                                        <strong>Version:</strong> {{ plugin.version }}
+                                    </div>
+                                    <div class="detail-item">
+                                        <strong>Class:</strong> {{ plugin.class_name }}
+                                    </div>
+                                    <div class="detail-item">
+                                        <strong>Requirements:</strong> 
+                                        <span class="requirements">{{ plugin.requirements | join(', ') }}</span>
+                                    </div>
+                                </div>
+                                <div class="plugin-parameters">
+                                    <h4>Parameters:</h4>
+                                    <div class="parameters-list">
+                                        {% for param, value in plugin.parameters.items() %}
+                                        <div class="parameter-item">
+                                            <label>{{ param }}:</label>
+                                            <input type="text" value="{{ value }}" data-param="{{ param }}">
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="plugin-actions">
+                                <button class="btn btn-sm {{ 'btn-warning' if plugin.enabled else 'btn-success' }}" 
+                                        onclick="togglePlugin('{{ plugin.name }}', 'ml_detector')">
+                                    {{ 'Disable' if plugin.enabled else 'Enable' }}
+                                </button>
+                                <button class="btn btn-sm btn-info" onclick="testPlugin('{{ plugin.name }}', 'ml_detector')">
+                                    Test
+                                </button>
+                                <button class="btn btn-sm btn-secondary" onclick="configurePlugin('{{ plugin.name }}', 'ml_detector')">
+                                    Configure
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Output Formats Tab -->
+                <div id="output-formats" class="tab-content">
+                    <div class="plugins-grid">
+                        {% for plugin in output_formats %}
+                        <div class="plugin-card" data-plugin="{{ plugin.name }}">
+                            <div class="plugin-header">
+                                <h3>{{ plugin.name }}</h3>
+                                <span class="plugin-status {{ 'enabled' if plugin.enabled else 'disabled' }}">
+                                    {{ 'Enabled' if plugin.enabled else 'Disabled' }}
+                                </span>
+                            </div>
+                            <div class="plugin-body">
+                                <p class="plugin-description">{{ plugin.description }}</p>
+                                <div class="plugin-details">
+                                    <div class="detail-item">
+                                        <strong>Extension:</strong> {{ plugin.file_extension }}
+                                    </div>
+                                    <div class="detail-item">
+                                        <strong>Features:</strong>
+                                        <span class="features">{{ plugin.features | join(', ') }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="plugin-actions">
+                                <button class="btn btn-sm {{ 'btn-warning' if plugin.enabled else 'btn-success' }}" 
+                                        onclick="togglePlugin('{{ plugin.name }}', 'output_format')">
+                                    {{ 'Disable' if plugin.enabled else 'Enable' }}
+                                </button>
+                                <button class="btn btn-sm btn-info" onclick="testPlugin('{{ plugin.name }}', 'output_format')">
+                                    Test
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Log Parsers Tab -->
+                <div id="log-parsers" class="tab-content">
+                    <div class="plugins-grid">
+                        <div class="no-plugins">
+                            <p>No log parser plugins available. Create custom log parsers to extend LogGuard ML's parsing capabilities.</p>
+                            <button class="btn btn-primary">Create New Parser</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Plugin Upload Section -->
+                <div class="upload-section">
+                    <h3>Install New Plugin</h3>
+                    <div class="upload-area">
+                        <input type="file" id="plugin-file" accept=".py,.zip" multiple>
+                        <button id="upload-plugin" class="btn btn-primary">Upload Plugin</button>
+                    </div>
+                    <div class="upload-info">
+                        <p>Supported formats: Python files (.py), Plugin packages (.zip)</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Plugin management JavaScript
+        
+        // Tab switching
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const tabName = this.getAttribute('data-tab');
+                
+                // Update active tab button
+                document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Update active tab content
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(tabName).classList.add('active');
+            });
+        });
+        
+        // Plugin actions
+        function togglePlugin(pluginName, pluginType) {
+            fetch(`/api/plugins/${pluginType}/${pluginName}/toggle`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Plugin ${pluginName} ${data.enabled ? 'enabled' : 'disabled'}`, 'success');
+                    location.reload(); // Reload to update UI
+                } else {
+                    showNotification(`Failed to toggle plugin: ${data.error}`, 'error');
+                }
+            });
+        }
+        
+        function testPlugin(pluginName, pluginType) {
+            showNotification(`Testing plugin ${pluginName}...`, 'info');
+            
+            fetch(`/api/plugins/${pluginType}/${pluginName}/test`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Plugin test passed: ${data.result}`, 'success');
+                } else {
+                    showNotification(`Plugin test failed: ${data.error}`, 'error');
+                }
+            });
+        }
+        
+        function configurePlugin(pluginName, pluginType) {
+            // Open configuration modal or navigate to config page
+            showNotification(`Configuration for ${pluginName} coming soon!`, 'info');
+        }
+        
+        // Plugin loading
+        document.getElementById('load-plugins').addEventListener('click', function() {
+            fetch('/api/plugins/reload', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Loaded ${data.count} plugins`, 'success');
+                    location.reload();
+                } else {
+                    showNotification(`Failed to load plugins: ${data.error}`, 'error');
+                }
+            });
+        });
+        
+        // Plugin refresh
+        document.getElementById('refresh-plugins').addEventListener('click', function() {
+            location.reload();
+        });
+        
+        // Plugin upload
+        document.getElementById('upload-plugin').addEventListener('click', function() {
+            const fileInput = document.getElementById('plugin-file');
+            const files = fileInput.files;
+            
+            if (files.length === 0) {
+                showNotification('Please select plugin files to upload', 'warning');
+                return;
+            }
+            
+            const formData = new FormData();
+            for (let file of files) {
+                formData.append('plugins', file);
+            }
+            
+            fetch('/api/plugins/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`Successfully uploaded ${data.uploaded} plugins`, 'success');
+                    location.reload();
+                } else {
+                    showNotification(`Upload failed: ${data.error}`, 'error');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -476,7 +476,12 @@ class FeatureEngineer:
         
         # 1. Text-based features
         if "message" in df.columns:
-            text_features, text_names = self._extract_text_features(df["message"])
+            # Handle categorical data in message column
+            message_series = df["message"].copy()
+            if hasattr(message_series, 'cat'):
+                message_series = message_series.astype(str)
+            
+            text_features, text_names = self._extract_text_features(message_series)
             if text_features.size > 0:
                 feature_list.append(text_features)
                 feature_names.extend(text_names)
@@ -513,6 +518,11 @@ class FeatureEngineer:
     def _extract_text_features(self, messages: pd.Series) -> Tuple[np.ndarray, List[str]]:
         """Extract TF-IDF features from message text."""
         try:
+            # Handle categorical data properly
+            if hasattr(messages, 'cat'):
+                # Convert categorical to string
+                messages = messages.astype(str)
+            
             # Cache key for this message set
             cache_key = hashlib.md5(''.join(messages.astype(str)).encode()).hexdigest()
             
@@ -638,13 +648,19 @@ class FeatureEngineer:
         
         # Message length features
         if "message" in df.columns:
-            message_lengths = df["message"].fillna('').astype(str).str.len()
+            # Handle categorical data properly
+            message_series = df["message"].copy()
+            if hasattr(message_series, 'cat'):
+                # Convert categorical to string
+                message_series = message_series.astype(str)
+            
+            message_lengths = message_series.fillna('').astype(str).str.len()
             features.append(message_lengths.values.reshape(-1, 1))
             feature_names.append('message_length')
             
             # Message complexity (unique character ratio)
-            complexity = df["message"].fillna('').apply(
-                lambda x: len(set(x)) / max(len(x), 1) if x else 0
+            complexity = message_series.fillna('').apply(
+                lambda x: len(set(str(x))) / max(len(str(x)), 1) if x else 0
             )
             features.append(complexity.values.reshape(-1, 1))
             feature_names.append('message_complexity')

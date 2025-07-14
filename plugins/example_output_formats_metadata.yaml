@@ -1,0 +1,61 @@
+name: "example_output_formats"
+version: "1.0.0"
+description: "Example output format plugins for LogGuard ML"
+author: "LogGuard ML Team"
+dependencies:
+  - "pandas>=1.3.0"
+
+config_schema:
+  xml_output:
+    type: "object"
+    properties:
+      include_metadata:
+        type: "boolean"
+        default: true
+        description: "Include metadata section in XML output"
+      pretty_print:
+        type: "boolean"
+        default: true
+        description: "Format XML with proper indentation"
+  
+  jsonlines_output:
+    type: "object"
+    properties:
+      include_index:
+        type: "boolean"
+        default: false
+        description: "Include DataFrame index in output"
+      compact_format:
+        type: "boolean"
+        default: true
+        description: "Use compact JSON formatting"
+  
+  markdown_output:
+    type: "object"
+    properties:
+      include_summary:
+        type: "boolean"
+        default: true
+        description: "Include summary section"
+      max_anomalies_shown:
+        type: "integer"
+        minimum: 10
+        maximum: 200
+        default: 50
+        description: "Maximum number of anomalies to display"
+      include_statistics:
+        type: "boolean"
+        default: true
+        description: "Include statistical analysis section"
+  
+  csv_enhanced_output:
+    type: "object"
+    properties:
+      add_analysis_columns:
+        type: "boolean"
+        default: true
+        description: "Add additional analysis columns"
+      include_metadata_header:
+        type: "boolean"
+        default: true
+        description: "Include metadata in CSV header comments"

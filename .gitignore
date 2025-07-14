@@ -50,6 +50,19 @@ Thumbs.db
 .coverage
 htmlcov/
 
+# Benchmark results and temporary files
+benchmarks/results/
+verification_*.txt
+verification_*.py
+test_low_priority_*.py
+
+# Log files
+*.log
+
+# Temporary data files
+temp_*
+tmp_*
+
 # LogGuard ML specific
 /reports/
 temp_*.html

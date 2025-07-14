@@ -1,0 +1,68 @@
+# Benchmark Configuration for LogGuard ML
+
+# Performance benchmark settings
+benchmarks:
+  # Default number of iterations for each benchmark
+  default_iterations: 5
+  
+  # Test data sizes to generate
+  test_sizes:
+    small: 1000      # 1K log entries
+    medium: 10000    # 10K log entries  
+    large: 50000     # 50K log entries
+    xlarge: 100000   # 100K log entries
+    
+  # Performance thresholds for regression detection
+  thresholds:
+    execution_time_regression: 10.0  # % increase considered regression
+    memory_regression: 20.0          # % increase considered regression
+    improvement_threshold: 5.0       # % decrease considered improvement
+    
+  # Benchmark categories to run
+  categories:
+    - log_parsing
+    - anomaly_detection  
+    - report_generation
+    
+  # Results retention
+  results:
+    keep_last_n: 10  # Keep last N benchmark runs
+    archive_after_days: 30
+    
+# CI/CD Integration settings
+ci:
+  # Fail build if regressions detected
+  fail_on_regression: true
+  
+  # Upload results to monitoring system
+  upload_results: false
+  
+  # Compare against baseline
+  baseline_comparison: true
+  baseline_file: "benchmarks/baselines/latest.json"
+  
+# Output settings
+output:
+  generate_charts: true
+  include_system_info: true
+  detailed_reports: true
+  
+# Alerting for performance issues
+alerts:
+  enabled: false
+  webhook_url: ""
+  email_recipients: []
+  
+# Advanced settings
+advanced:
+  # Memory profiling during benchmarks
+  enable_memory_profiling: true
+  
+  # CPU profiling
+  enable_cpu_profiling: false
+  
+  # Warmup iterations before actual benchmarking
+  warmup_iterations: 1
+  
+  # Cleanup between iterations
+  cleanup_between_runs: true

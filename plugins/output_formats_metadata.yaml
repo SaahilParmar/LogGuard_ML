@@ -1,0 +1,50 @@
+name: Output Formats Plugin Pack
+version: "1.0.0"
+description: Example output format plugins for LogGuard ML
+author: LogGuard ML Team
+license: MIT
+
+plugins:
+  - name: xml_output
+    class: XMLOutputFormat
+    type: output_format
+    description: XML output format with structured anomaly data
+    file_extension: .xml
+    features:
+      - structured_data
+      - metadata_support
+      - custom_schema
+    requirements: []
+    
+  - name: jsonlines_output
+    class: JSONLinesOutputFormat
+    type: output_format
+    description: JSON Lines format for streaming and batch processing
+    file_extension: .jsonl
+    features:
+      - streaming_support
+      - batch_processing
+      - compact_format
+    requirements: []
+    
+  - name: markdown_output
+    class: MarkdownOutputFormat
+    type: output_format
+    description: Human-readable Markdown reports with formatting
+    file_extension: .md
+    features:
+      - human_readable
+      - rich_formatting
+      - report_generation
+    requirements: []
+    
+  - name: enhanced_csv_output
+    class: EnhancedCSVOutputFormat
+    type: output_format
+    description: Enhanced CSV with metadata and additional fields
+    file_extension: .csv
+    features:
+      - spreadsheet_compatible
+      - metadata_columns
+      - analysis_ready
+    requirements: []

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration - LogGuard ML</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <nav class="navbar">
+            <h1>LogGuard ML Configuration</h1>
+            <div class="nav-links">
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('config') }}" class="active">Configuration</a>
+                <a href="{{ url_for('plugins') }}">Plugins</a>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <div class="config-section">
+                <h2>System Configuration</h2>
+                
+                <form id="config-form" method="POST">
+                    <div class="config-group">
+                        <h3>General Settings</h3>
+                        
+                        <div class="form-field">
+                            <label for="log_level">Log Level:</label>
+                            <select id="log_level" name="log_level">
+                                <option value="DEBUG" {% if config.get('logging', {}).get('level') == 'DEBUG' %}selected{% endif %}>DEBUG</option>
+                                <option value="INFO" {% if config.get('logging', {}).get('level') == 'INFO' %}selected{% endif %}>INFO</option>
+                                <option value="WARNING" {% if config.get('logging', {}).get('level') == 'WARNING' %}selected{% endif %}>WARNING</option>
+                                <option value="ERROR" {% if config.get('logging', {}).get('level') == 'ERROR' %}selected{% endif %}>ERROR</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-field">
+                            <label for="max_workers">Max Workers:</label>
+                            <input type="number" id="max_workers" name="max_workers" 
+                                   value="{{ config.get('processing', {}).get('max_workers', 4) }}" 
+                                   min="1" max="16">
+                        </div>
+                        
+                        <div class="form-field">
+                            <label for="batch_size">Batch Size:</label>
+                            <input type="number" id="batch_size" name="batch_size" 
+                                   value="{{ config.get('processing', {}).get('batch_size', 1000) }}" 
+                                   min="100" max="10000">
+                        </div>
+                    </div>
+
+                    <div class="config-group">
+                        <h3>ML Model Settings</h3>
+                        
+                        <div class="form-field">
+                            <label for="model_type">Default Model:</label>
+                            <select id="model_type" name="model_type">
+                                <option value="isolation_forest" {% if config.get('ml', {}).get('default_model') == 'isolation_forest' %}selected{% endif %}>Isolation Forest</option>
+                                <option value="one_class_svm" {% if config.get('ml', {}).get('default_model') == 'one_class_svm' %}selected{% endif %}>One-Class SVM</option>
+                                <option value="local_outlier_factor" {% if config.get('ml', {}).get('default_model') == 'local_outlier_factor' %}selected{% endif %}>Local Outlier Factor</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-field">
+                            <label for="contamination">Contamination Rate:</label>
+                            <input type="number" id="contamination" name="contamination" 
+                                   value="{{ config.get('ml', {}).get('contamination', 0.1) }}" 
+                                   min="0.01" max="0.5" step="0.01">
+                        </div>
+                        
+                        <div class="form-field">
+                            <label for="confidence_threshold">Confidence Threshold:</label>
+                            <input type="number" id="confidence_threshold" name="confidence_threshold" 
+                                   value="{{ config.get('ml', {}).get('confidence_threshold', 0.7) }}" 
+                                   min="0.1" max="1.0" step="0.05">
+                        </div>
+                    </div>
+
+                    <div class="config-group">
+                        <h3>Output Settings</h3>
+                        
+                        <div class="form-field">
+                            <label for="output_format">Default Output Format:</label>
+                            <select id="output_format" name="output_format">
+                                <option value="json" {% if config.get('output', {}).get('format') == 'json' %}selected{% endif %}>JSON</option>
+                                <option value="csv" {% if config.get('output', {}).get('format') == 'csv' %}selected{% endif %}>CSV</option>
+                                <option value="xml" {% if config.get('output', {}).get('format') == 'xml' %}selected{% endif %}>XML</option>
+                                <option value="markdown" {% if config.get('output', {}).get('format') == 'markdown' %}selected{% endif %}>Markdown</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-field checkbox-field">
+                            <input type="checkbox" id="include_metadata" name="include_metadata" 
+                                   {% if config.get('output', {}).get('include_metadata', True) %}checked{% endif %}>
+                            <label for="include_metadata">Include Metadata</label>
+                        </div>
+                        
+                        <div class="form-field checkbox-field">
+                            <input type="checkbox" id="compress_output" name="compress_output" 
+                                   {% if config.get('output', {}).get('compress', False) %}checked{% endif %}>
+                            <label for="compress_output">Compress Output Files</label>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">Save Configuration</button>
+                        <button type="button" id="reset-btn" class="btn btn-secondary">Reset to Defaults</button>
+                        <button type="button" id="validate-btn" class="btn btn-info">Validate Configuration</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="config-preview">
+                <h3>Configuration Preview</h3>
+                <pre id="config-preview-content">{{ config_yaml }}</pre>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script>
+        // Configuration page specific JavaScript
+        document.getElementById('config-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const config = {};
+            
+            // Convert form data to config object
+            formData.forEach((value, key) => {
+                if (key.includes('.')) {
+                    const [section, setting] = key.split('.');
+                    if (!config[section]) config[section] = {};
+                    config[section][setting] = value;
+                } else {
+                    config[key] = value;
+                }
+            });
+            
+            // Send configuration update
+            fetch('/api/config', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Configuration saved successfully!', 'success');
+                    updateConfigPreview();
+                } else {
+                    showNotification('Failed to save configuration: ' + data.error, 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Error saving configuration: ' + error, 'error');
+            });
+        });
+        
+        document.getElementById('validate-btn').addEventListener('click', function() {
+            fetch('/api/config/validate')
+            .then(response => response.json())
+            .then(data => {
+                if (data.valid) {
+                    showNotification('Configuration is valid!', 'success');
+                } else {
+                    showNotification('Configuration errors: ' + data.errors.join(', '), 'error');
+                }
+            });
+        });
+        
+        function updateConfigPreview() {
+            fetch('/api/config')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('config-preview-content').textContent = 
+                    JSON.stringify(data, null, 2);
+            });
+        }
+    </script>
+</body>
+</html>
