@@ -51,6 +51,7 @@ Thumbs.db
 htmlcov/
 
 # Benchmark results and temporary files
+benchmark_results/
 benchmarks/results/
 verification_*.txt
 verification_*.py
