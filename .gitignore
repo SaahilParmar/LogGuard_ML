@@ -88,3 +88,7 @@ logs/
 
 # Reports (generated artifacts)
 reports/*.html
+
+# Prevent auto-creation of venv helper files
+scripts/venv_helper.sh
+scripts/venv_aliases.sh
