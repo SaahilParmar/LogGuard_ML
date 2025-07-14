@@ -254,6 +254,14 @@ class BenchmarkRunner:
             
         return all_results
         
+    def _get_logguard_version(self) -> str:
+        """Get LogGuard ML version dynamically."""
+        try:
+            from logguard_ml.__version__ import __version__
+            return __version__
+        except ImportError:
+            return "unknown"
+
     def _get_system_info(self) -> Dict:
         """Get system information for benchmark context."""
         import platform
@@ -264,7 +272,7 @@ class BenchmarkRunner:
             "platform": platform.platform(),
             "cpu_count": psutil.cpu_count(),
             "memory_gb": round(psutil.virtual_memory().total / (1024**3), 2),
-            "logguard_version": "0.2.0"  # TODO: Get from __version__
+            "logguard_version": self._get_logguard_version()
         }
         
     def save_results(self, results: Dict, filename: Optional[str] = None) -> Path:
