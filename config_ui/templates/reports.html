@@ -167,30 +167,43 @@
 </div>
 {% endblock %}
 
+{% endblock %}
+
 {% block scripts %}
+<!-- Pass data to JavaScript -->
+<script id="reports-data" type="application/json">
+{
+    "hasReports": {{ 'true' if reports else 'false' }},
+    "latestReport": {% if reports %}"{{ reports[0].modified }}"{% else %}null{% endif %}
+}
+</script>
+
 <script>
+// Get template data
+const reportsDataElement = document.getElementById('reports-data');
+const reportsData = JSON.parse(reportsDataElement.textContent);
+
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
     updateLatestReport();
 });
 
 function updateLatestReport() {
-    {% if reports %}
-    const latestReport = "{{ reports[0].modified }}";
-    const reportDate = new Date(latestReport);
-    const now = new Date();
-    const diffHours = Math.floor((now - reportDate) / (1000 * 60 * 60));
-    
-    if (diffHours < 1) {
-        document.getElementById('latest-report').textContent = 'Just now';
-    } else if (diffHours < 24) {
-        document.getElementById('latest-report').textContent = diffHours + 'h ago';
+    if (reportsData.hasReports && reportsData.latestReport) {
+        const reportDate = new Date(reportsData.latestReport);
+        const now = new Date();
+        const diffHours = Math.floor((now - reportDate) / (1000 * 60 * 60));
+        
+        if (diffHours < 1) {
+            document.getElementById('latest-report').textContent = 'Just now';
+        } else if (diffHours < 24) {
+            document.getElementById('latest-report').textContent = diffHours + 'h ago';
+        } else {
+            document.getElementById('latest-report').textContent = Math.floor(diffHours / 24) + 'd ago';
+        }
     } else {
-        document.getElementById('latest-report').textContent = Math.floor(diffHours / 24) + 'd ago';
+        document.getElementById('latest-report').textContent = 'None';
     }
-    {% else %}
-    document.getElementById('latest-report').textContent = 'None';
-    {% endif %}
 }
 
 function generateReport() {
