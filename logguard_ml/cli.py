@@ -26,7 +26,7 @@ from typing import Optional
 
 import yaml
 
-from logguard_ml import __version__
+from logguard_ml.utils.version import get_version, get_system_version_info
 from logguard_ml.core.log_parser import LogParser, LogParsingError
 from logguard_ml.core.advanced_ml import AdvancedAnomalyDetector, AnomalyDetectionError
 from logguard_ml.core.monitoring import LogMonitor
@@ -117,7 +117,7 @@ For more information, visit: https://github.com/SaahilParmar/LogGuard_ML
     parser.add_argument(
         "--version",
         action="version",
-        version=f"LogGuard ML {__version__}"
+        version=f"LogGuard ML {get_version()}"
     )
     
     subparsers = parser.add_subparsers(dest="command", help="Available commands")

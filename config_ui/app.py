@@ -38,12 +38,14 @@ except ImportError:
     FLASK_AVAILABLE = False
     Flask = None
 
-from logguard_ml import __version__
+import os
+from logguard_ml.version_manager import get_version
 from logguard_ml.plugins import plugin_manager
 
 app = Flask(__name__) if FLASK_AVAILABLE else None
 if app:
-    app.secret_key = 'logguard-ml-config-ui-secret-key'
+    # Use environment variable for secret key in production
+    app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'logguard-ml-config-ui-dev-key-change-in-production')
 
 # Configuration file paths
 CONFIG_DIR = Path(__file__).parent.parent / "config"
@@ -120,7 +122,7 @@ config_manager = ConfigManager()
 # Route definitions
 def index():
     """Main dashboard page."""
-    return render_template('index.html', version=__version__)
+    return render_template('index.html', version=get_version())
 
 
 def config_page():
@@ -212,7 +214,7 @@ def api_system_status():
                 "disk_free_gb": round(disk.free / (1024**3), 2)
             },
             "logguard": {
-                "version": __version__,
+                "version": get_version(),
                 "config_valid": len(config_manager.validate_config(config)) == 0,
                 "plugins_loaded": sum(len(v) for v in plugin_manager.list_plugins().values())
             }
@@ -518,12 +520,20 @@ def main():
     
     print("LogGuard ML Configuration UI")
     print("=" * 40)
-    print(f"Version: {__version__}")
+    print(f"Version: {get_version()}")
     print("Starting web server on http://localhost:5000")
     print("Press Ctrl+C to stop")
     
+    # Environment-based configuration
+    debug_mode = os.environ.get('FLASK_ENV') == 'development'
+    host = os.environ.get('FLASK_HOST', '127.0.0.1')
+    port = int(os.environ.get('FLASK_PORT', '5000'))
+    
+    if debug_mode:
+        print("⚠️  Running in DEBUG mode - not suitable for production!")
+    
     try:
-        app.run(debug=True, host='0.0.0.0', port=5000)
+        app.run(debug=debug_mode, host=host, port=port)
     except KeyboardInterrupt:
         print("\nShutting down...")
     

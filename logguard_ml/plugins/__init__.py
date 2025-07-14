@@ -29,6 +29,13 @@ from typing import Dict, List, Type, Any, Optional, Callable
 import yaml
 import json
 
+# Optional imports for enhanced functionality
+try:
+    import jsonschema  # type: ignore[import]
+    _JSONSCHEMA_AVAILABLE = True
+except ImportError:
+    _JSONSCHEMA_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -375,8 +382,21 @@ class PluginManager:
         if not metadata.config_schema:
             return True
             
-        # TODO: Implement JSON schema validation
-        return True
+        # Validate configuration against plugin schema
+        if not _JSONSCHEMA_AVAILABLE:
+            logger.warning("jsonschema not available, skipping configuration validation")
+            return True
+            
+        try:
+            jsonschema.validate(config, metadata.config_schema)
+            logger.debug(f"Configuration validation passed for plugin: {plugin_name}")
+            return True
+        except jsonschema.ValidationError as e:
+            logger.error(f"Configuration validation failed for {plugin_name}: {e}")
+            return False
+        except Exception as e:
+            logger.error(f"Configuration validation error for {plugin_name}: {e}")
+            return False
         
     def export_plugin_registry(self, output_path: str) -> None:
         """Export plugin registry information."""

@@ -257,10 +257,15 @@ class BenchmarkRunner:
     def _get_logguard_version(self) -> str:
         """Get LogGuard ML version dynamically."""
         try:
-            from logguard_ml.__version__ import __version__
-            return __version__
+            from logguard_ml.utils.version import get_version
+            return get_version()
         except ImportError:
-            return "unknown"
+            # Fallback for development environments
+            try:
+                from logguard_ml.__version__ import __version__
+                return __version__
+            except ImportError:
+                return "unknown"
 
     def _get_system_info(self) -> Dict:
         """Get system information for benchmark context."""
