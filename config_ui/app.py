@@ -28,8 +28,10 @@ from typing import Dict, List, Any, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
-    from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
-    from flask import send_from_directory
+    from flask import (
+        Flask, render_template, request, jsonify, redirect,
+        url_for, flash, send_from_directory,
+    )
     FLASK_AVAILABLE = True
 except ImportError:
     print("Flask not available. Install with: pip install flask")
