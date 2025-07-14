@@ -208,6 +208,9 @@ class PluginManager:
         
     def register_ml_detector(self, detector_class: Type[MLDetectorPlugin]) -> None:
         """Register a custom ML detector plugin."""
+        if not inspect.isclass(detector_class):
+            raise PluginError(f"Expected a class, got {type(detector_class).__name__}")
+            
         if not issubclass(detector_class, MLDetectorPlugin):
             raise PluginError(f"Class must inherit from MLDetectorPlugin")
             
@@ -225,6 +228,9 @@ class PluginManager:
         
     def register_output_format(self, format_class: Type[OutputFormatPlugin]) -> None:
         """Register a custom output format plugin."""
+        if not inspect.isclass(format_class):
+            raise PluginError(f"Expected a class, got {type(format_class).__name__}")
+            
         if not issubclass(format_class, OutputFormatPlugin):
             raise PluginError(f"Class must inherit from OutputFormatPlugin")
             
@@ -242,6 +248,9 @@ class PluginManager:
         
     def register_log_parser(self, parser_class: Type[LogParserPlugin]) -> None:
         """Register a custom log parser plugin."""
+        if not inspect.isclass(parser_class):
+            raise PluginError(f"Expected a class, got {type(parser_class).__name__}")
+            
         if not issubclass(parser_class, LogParserPlugin):
             raise PluginError(f"Class must inherit from LogParserPlugin")
             
