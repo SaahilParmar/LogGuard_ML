@@ -21,13 +21,14 @@ Example:
 """
 
 from logguard_ml.__version__ import __version__
-from logguard_ml.core.log_parser import LogParser
 from logguard_ml.core.advanced_ml import AdvancedAnomalyDetector, AnomalyDetector
+from logguard_ml.core.log_parser import LogParser
 from logguard_ml.reports.report_generator import generate_html_report
 
 # Optional imports - only import if dependencies are available
 try:
     from logguard_ml.core.monitoring import LogMonitor
+
     _MONITORING_AVAILABLE = True
 except ImportError:
     LogMonitor = None
@@ -35,7 +36,7 @@ except ImportError:
 
 __all__ = [
     "__version__",
-    "LogParser", 
+    "LogParser",
     "AdvancedAnomalyDetector",
     "AnomalyDetector",  # Backward compatibility
     "generate_html_report",
