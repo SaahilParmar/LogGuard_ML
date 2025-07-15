@@ -16,9 +16,16 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 from datetime import datetime, timedelta
-from cryptography.fernet import Fernet
 import time
 import json
+
+# Optional cryptography import
+try:
+    from cryptography.fernet import Fernet
+    CRYPTOGRAPHY_AVAILABLE = True
+except ImportError:
+    CRYPTOGRAPHY_AVAILABLE = False
+    logging.warning("Cryptography not available. Install with: pip install cryptography")
 
 logger = logging.getLogger(__name__)
 
@@ -149,8 +156,11 @@ class ConfigurationEncryption:
         self.key_file = key_file or ".logguard_key"
         self.cipher = self._get_or_create_cipher()
     
-    def _get_or_create_cipher(self) -> Fernet:
+    def _get_or_create_cipher(self):
         """Get or create encryption cipher."""
+        if not CRYPTOGRAPHY_AVAILABLE:
+            raise ImportError("Cryptography library required for encryption features")
+            
         key_path = Path(self.key_file)
         
         if key_path.exists():
@@ -167,10 +177,14 @@ class ConfigurationEncryption:
     
     def encrypt_value(self, value: str) -> str:
         """Encrypt a configuration value."""
+        if not CRYPTOGRAPHY_AVAILABLE:
+            raise ImportError("Cryptography library required for encryption")
         return self.cipher.encrypt(value.encode()).decode()
     
     def decrypt_value(self, encrypted_value: str) -> str:
         """Decrypt a configuration value."""
+        if not CRYPTOGRAPHY_AVAILABLE:
+            raise ImportError("Cryptography library required for decryption")
         return self.cipher.decrypt(encrypted_value.encode()).decode()
     
     def encrypt_config(self, config: Dict, sensitive_keys: List[str]) -> Dict:
