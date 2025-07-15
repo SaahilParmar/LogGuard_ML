@@ -18,15 +18,29 @@ from pathlib import Path
 import json
 import time
 
-# Advanced ML imports
+logger = logging.getLogger(__name__)
+
+# Advanced ML imports with detailed error handling
+TRANSFORMERS_AVAILABLE = False
+AUTOML_AVAILABLE = False
+EXPLAINABILITY_AVAILABLE = False
+
 try:
     import torch
     import torch.nn as nn
-    from transformers import AutoTokenizer, AutoModel
     TRANSFORMERS_AVAILABLE = True
-except ImportError:
-    TRANSFORMERS_AVAILABLE = False
-    logging.warning("Transformers not available. Install with: pip install torch transformers")
+    logger.info("PyTorch successfully imported")
+except ImportError as e:
+    logger.warning(f"PyTorch not available: {e}. Install with: pip install torch")
+
+try:
+    from transformers import AutoTokenizer, AutoModel
+    if TRANSFORMERS_AVAILABLE:
+        logger.info("Transformers successfully imported")
+    else:
+        logger.warning("Transformers available but PyTorch missing")
+except ImportError as e:
+    logger.warning(f"Transformers not available: {e}. Install with: pip install transformers")
 
 try:
     from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
@@ -34,20 +48,19 @@ try:
     from sklearn.metrics import classification_report, confusion_matrix
     import optuna
     AUTOML_AVAILABLE = True
-except ImportError:
-    AUTOML_AVAILABLE = False
-    logging.warning("AutoML dependencies not available")
+    logger.info("AutoML dependencies successfully imported")
+except ImportError as e:
+    logger.warning(f"AutoML dependencies not available: {e}. Install with: pip install optuna scikit-learn")
 
 try:
     import shap
     import lime
     from lime.lime_text import LimeTextExplainer
     EXPLAINABILITY_AVAILABLE = True
-except ImportError:
-    EXPLAINABILITY_AVAILABLE = False
-    logging.warning("Explainability libraries not available. Install with: pip install shap lime")
+    logger.info("Explainability libraries successfully imported")
+except ImportError as e:
+    logger.warning(f"Explainability libraries not available: {e}. Install with: pip install shap lime")
 
-logger = logging.getLogger(__name__)
 
 
 class TransformerLogAnalyzer:
